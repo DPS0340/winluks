@@ -1,0 +1,56 @@
+# v0.3 RW 확장
+
+사용자의 RW 구현 요청에 따라 v0.2의 RO 전용 범위를 확장한다. 원본 설계 문서는 당시
+사양으로 보존한다. Windows에서 지원하는 게시 경로는 현재 **Btrfs RO/RW**이며, ext4는
+기존 G0 발견 실패 때문에 계속 차단한다. 독립 LUKS 코어의 암호화·복호화는 두 파일시스템
+fixture로 비교한다.
+
+## 동작 계약
+
+- 실행 파일은 `winluks2.exe`이며 기본값은 RO다. 쓰기는 `open --read-write`로 명시한다.
+  `--read-only`와 `--read-write`를 동시에 지정할 수 없다.
+- RW 이미지는 기존의 로컬 일반 파일을 독점 핸들로 연다. Windows에서는 다른 읽기·쓰기·삭제
+  핸들과의 공유를 거부한다. Linux의 시험용 파일 잠금은 advisory이므로 외부 도구도 잠금을
+  준수해야 한다. 파일 생성·확장·축소·물리 장치·원격 파일·discard는 제공하지 않는다.
+- 쓰기는 검증된 LUKS 데이터 세그먼트 안에서만 허용한다. 512바이트 정렬과 최대 1 MiB 전송을
+  검사하고, 각 512바이트 데이터 단위의 AES-XTS IV로 다시 암호화한다. 헤더와 키슬롯은
+  쓰기 대상이 아니다. 읽기·쓰기·flush는 같은 세션 잠금 아래에서 순서를 보장한다.
+- WinSpd는 RW일 때 WriteProtected=0, 두 모드 모두 CacheSupported=0, UnmapSupported=0이다.
+  Windows 파일 핸들의 write-through와 매 쓰기 후 `sync_all`을 사용하며, backing-file flush가
+  성공한 뒤에만 쓰기를 완료한다. FUA가 없는 요청도 같은 계약을 따른다. 이것이 전체 파일의
+  트랜잭션이나 정전 중 섹터 쓰기의 원자성을 제공하는 것은 아니다.
+- short write는 남은 바이트를 계속 쓰고, 쓰기 또는 flush 실패는 세션을 영구 오류 상태로
+  바꾼다. 이후 쓰기를 성공 처리하지 않는다. 해당 종료는 `UNCLEAN_CLOSE`로 보고한다.
+- WinBtrfs v1.10과 WinSpd의 기존 바이너리를 그대로 사용한다. RW 시험 VM에서는
+  `prepare-drivers.ps1 -Filesystem btrfs -AccessMode rw -TrustPinnedPublishers` 실행 후 재부팅한다.
+  이 설정에서 RO 세션도 백엔드와 가상 디스크의 쓰기 방지로 동작하며 실제 파일시스템 RO
+  플래그를 확인한다. per-volume Readonly override가 있으면 RW 마운트가 거부될 수 있다.
+
+## 게시와 종료
+
+게시 후 파일시스템 볼륨의 storage descriptor를 통해 현재 WinSpd 세션의 무작위 SCSI serial을
+확인한다. 일치하는 단일 Btrfs 볼륨과 요청한 RO/RW 플래그를 확인한 뒤 `PUBLISHED_RO` 또는
+`PUBLISHED_RW`를 표시한다. 드라이브 문자로 종료 대상을 추정하지 않는다.
+
+RW에서 Ctrl+C는 볼륨 lock → filesystem flush → dismount → backing-file flush → callback drain
+→ 장치 제거 순서로 종료한다. 열린 파일 등으로 lock에 실패하면 `CLOSE_BLOCKED`를 출력하고
+세션을 유지한다. 파일을 닫고 Ctrl+C를 다시 누르면 재시도한다. 강제 종료, 게스트 전원 차단,
+I/O 실패 시 정상 종료를 보장하지 않으며, 복제 이미지를 Linux에서 오프라인 검사해야 한다.
+
+이 순서는 Microsoft의 [volume lock](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume),
+[dismount](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_dismount_volume)
+계약 및 고정 WinBtrfs 소스의 `lock_volume`/`dismount_volume` 처리를 따른다.
+
+## 검증 항목
+
+1. 기존 RO 30-case oracle 회귀와 parser/probe 시험.
+2. RW 30-case oracle: 첫/끝 섹터, 다중 섹터, 겹치는 쓰기, 1 MiB 쓰기 후 Linux dm-crypt의
+   전체 평문을 독립 Linux 원본 + 예상 변경과 비교. LUKS 헤더/키슬롯과 원본 fixture 불변.
+3. Windows 생성·비정렬 파일 덮어쓰기·append·truncate·Unicode·sparse·복사·이름 변경·삭제.
+4. 열린 파일 상태의 종료 거부, 핸들 해제 후 정상 종료, Windows 재마운트 후 파일 해시.
+5. 분리된 이미지를 Linux `btrfs check --readonly` 및 RO 마운트로 검사하고, 파일 내용과
+   sparse 할당을 검증. Linux가 새 파일을 기록한 이미지를 Windows에서 다시 읽는다.
+6. RW 드라이버 설정에서 RO 세션의 쓰기 거부, RW 세션의 백엔드 공유 거부, ext4 게시 차단.
+
+실행 여부와 결과는 [검증 기록](VALIDATION.md) 및 `docs/evidence/`에 기록한다. 이 확장은
+전체 장애·정전 행렬이나 독립 보안/스토리지 리뷰 완료를 의미하지 않는다.

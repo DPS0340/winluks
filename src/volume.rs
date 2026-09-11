@@ -63,7 +63,10 @@ impl UnlockedVolume {
         self.key.is_locked()
     }
     pub fn read_at(&self, offset: u64, len: usize) -> Result<Zeroizing<Vec<u8>>> {
-        let _guard = self.io.lock().map_err(|_| Error::WritebackFailed)?;
+        let _guard = self.io.lock().map_err(|_| {
+            self.faulted.store(true, Ordering::Release);
+            Error::WritebackFailed
+        })?;
         if self.faulted.load(Ordering::Acquire) {
             return Err(Error::WritebackFailed);
         }
@@ -83,10 +86,16 @@ impl UnlockedVolume {
             return Err(Error::InvalidRange);
         }
         let mut encrypted = Zeroizing::new(vec![0; (end - begin) as usize]);
-        self.image.read_exact_at(
+        if let Err(error) = self.image.read_exact_at(
             self.offset.checked_add(begin).ok_or(Error::InvalidRange)?,
             &mut encrypted,
-        )?;
+        ) {
+            if self.image.mode() == AccessMode::ReadWrite {
+                self.faulted.store(true, Ordering::Release);
+                return Err(Error::WritebackFailed);
+            }
+            return Err(error);
+        }
         let plain = crypto::decrypt_sectors(self.key.bytes(), begin / 512, &encrypted)?;
         let start = (offset - begin) as usize;
         Ok(Zeroizing::new(plain[start..start + len].to_vec()))
@@ -119,7 +128,10 @@ impl ValidatedVolume {
         if !offset.is_multiple_of(512) || !plaintext.len().is_multiple_of(512) {
             return Err(Error::InvalidRange);
         }
-        let _guard = self.volume.io.lock().map_err(|_| Error::WritebackFailed)?;
+        let _guard = self.volume.io.lock().map_err(|_| {
+            self.mark_faulted();
+            Error::WritebackFailed
+        })?;
         if self.faulted() {
             return Err(Error::WritebackFailed);
         }
@@ -145,7 +157,10 @@ impl ValidatedVolume {
         Ok(())
     }
     pub fn flush(&self) -> Result<()> {
-        let _guard = self.volume.io.lock().map_err(|_| Error::WritebackFailed)?;
+        let _guard = self.volume.io.lock().map_err(|_| {
+            self.mark_faulted();
+            Error::WritebackFailed
+        })?;
         if self.faulted() {
             return Err(Error::WritebackFailed);
         }
@@ -254,14 +269,20 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn backend_failure_permanently_faults_the_session() {
-        let (_dir, path, v) = session(AccessMode::ReadWrite);
-        let external = fs::OpenOptions::new().write(true).open(path).unwrap();
-        external.set_len(1).unwrap(); // Deliberately ignore the advisory Linux lock.
-        assert_eq!(v.write_at(0, &[0; 512]), Err(Error::WritebackFailed));
-        assert!(v.faulted());
-        external.set_len(5632).unwrap();
-        assert_eq!(v.write_at(0, &[0; 512]), Err(Error::WritebackFailed));
-        assert_eq!(v.read_at(0, 512), Err(Error::WritebackFailed));
-        assert_eq!(v.flush(), Err(Error::WritebackFailed));
+        for read_first in [false, true] {
+            let (_dir, path, v) = session(AccessMode::ReadWrite);
+            let external = fs::OpenOptions::new().write(true).open(path).unwrap();
+            external.set_len(1).unwrap(); // Deliberately ignore the advisory Linux lock.
+            if read_first {
+                assert_eq!(v.read_at(0, 512), Err(Error::WritebackFailed));
+            } else {
+                assert_eq!(v.write_at(0, &[0; 512]), Err(Error::WritebackFailed));
+            }
+            assert!(v.faulted());
+            external.set_len(5632).unwrap();
+            assert_eq!(v.write_at(0, &[0; 512]), Err(Error::WritebackFailed));
+            assert_eq!(v.read_at(0, 512), Err(Error::WritebackFailed));
+            assert_eq!(v.flush(), Err(Error::WritebackFailed));
+        }
     }
 }

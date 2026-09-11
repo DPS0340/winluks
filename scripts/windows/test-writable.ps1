@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$true)][string]$Manifest,
     [Parameter(Mandatory=$true)][ValidatePattern('^[A-Z]:\\$')][string]$Root,
     [Parameter(Mandatory=$true)][int]$DiskNumber,

@@ -156,7 +156,7 @@ static int belongs_to_session(WL_SESSION *s, HANDLE volume) {
     int match = 0;
     memset(descriptor, 0, sizeof descriptor);
     if (DeviceIoControl(volume, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof query,
-        descriptor, sizeof descriptor, &n, 0) && n >= sizeof *d && d->SerialNumberOffset &&
+        descriptor, sizeof descriptor, &n, 0) && n >= sizeof *d && n <= sizeof descriptor && d->SerialNumberOffset &&
         d->SerialNumberOffset < n && n - d->SerialNumberOffset > 36) {
         match = !_strnicmp((char *)descriptor + d->SerialNumberOffset, s->serial, 36) &&
             descriptor[d->SerialNumberOffset + 36] == 0;
