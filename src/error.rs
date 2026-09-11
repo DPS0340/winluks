@@ -31,6 +31,14 @@ pub enum Error {
     FsDriverUnavailable,
     #[error("FS_GATE_UNPASSED")]
     FsGateUnpassed,
+    #[error("WRITEBACK_FAILED")]
+    WritebackFailed,
+    #[error("UNSUPPORTED_OPERATION")]
+    UnsupportedOperation,
+    #[error("VOLUME_DISCOVERY_FAILED")]
+    VolumeDiscoveryFailed,
+    #[error("UNCLEAN_CLOSE")]
+    UncleanClose,
     #[error("DEVICE_PUBLISH_FAILED")]
     DevicePublishFailed,
     #[error("READ_ONLY")]

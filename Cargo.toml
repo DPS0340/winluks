@@ -1,10 +1,10 @@
 [package]
 name = "winluks"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.89"
 license = "GPL-3.0-or-later"
-description = "Experimental read-only LUKS2 image bridge for Windows"
+description = "Experimental LUKS2 image bridge for Windows with Btrfs read-write support"
 repository = "https://github.com/DPS0340/winluks"
 
 [features]
@@ -41,7 +41,7 @@ cc = "1.2"
 tempfile = "3"
 
 [[bin]]
-name = "winluks2-ro"
+name = "winluks2"
 path = "src/main.rs"
 
 [profile.release]

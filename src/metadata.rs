@@ -465,6 +465,9 @@ impl Metadata {
     pub fn volume_length(&self) -> u64 {
         self.length
     }
+    pub fn data_offset(&self) -> u64 {
+        self.offset
+    }
     pub(crate) fn slot(&self, id: u32) -> Result<&Slot> {
         self.slots.get(&id).ok_or(Error::UnsupportedProfile)
     }

@@ -2,14 +2,19 @@ use clap::{Parser, Subcommand};
 use std::{path::PathBuf, process::ExitCode};
 #[cfg(windows)]
 use winluks::volume::UnlockedVolume;
-use winluks::{Error, Result, image::Image, metadata::Metadata, probe::Filesystem};
+use winluks::{
+    Error, Result,
+    image::{AccessMode, Image},
+    metadata::Metadata,
+    probe::Filesystem,
+};
 #[cfg(windows)]
 use zeroize::Zeroizing;
 #[derive(Parser)]
 #[command(
     version,
-    about = "Experimental read-only LUKS2 partition-image bridge",
-    long_about = "Experimental read-only LUKS2 partition-image bridge.\n\nWinSpd - Windows Storage Proxy Driver, Copyright (C) Bill Zissimopoulos.\nhttps://github.com/winfsp/winspd"
+    about = "Experimental LUKS2 image bridge with read-only and Btrfs read-write modes",
+    long_about = "Experimental LUKS2 image bridge. Read-only by default; Btrfs writes require --read-write.\n\nWinSpd - Windows Storage Proxy Driver, Copyright (C) Bill Zissimopoulos.\nhttps://github.com/winfsp/winspd"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -28,8 +33,10 @@ enum Command {
         keyslot: u32,
         #[arg(long, value_enum)]
         filesystem: Filesystem,
-        #[arg(long, required = true)]
+        #[arg(long, conflicts_with = "read_write")]
         read_only: bool,
+        #[arg(long, conflicts_with = "read_only")]
+        read_write: bool,
     },
 }
 fn run(cli: Cli) -> Result<()> {
@@ -48,8 +55,14 @@ fn run(cli: Cli) -> Result<()> {
             keyslot,
             filesystem,
             read_only: _,
+            read_write,
         } => {
-            let image = Image::open(&image)?;
+            let mode = if read_write {
+                AccessMode::ReadWrite
+            } else {
+                AccessMode::ReadOnly
+            };
+            let image = Image::open_with_mode(&image, mode)?;
             let m = Metadata::read(&image)?;
             if !m.keyslots().contains(&keyslot) {
                 return Err(Error::UnsupportedProfile);
@@ -62,7 +75,7 @@ fn run(cli: Cli) -> Result<()> {
             #[cfg(windows)]
             {
                 use std::io::IsTerminal;
-                winluks::adapter::check_consumer(filesystem)?;
+                winluks::adapter::check_consumer(filesystem, mode)?;
                 if !std::io::stdin().is_terminal() {
                     return Err(Error::ConsoleRequired);
                 }
@@ -75,7 +88,10 @@ fn run(cli: Cli) -> Result<()> {
                     eprintln!("KEY_MEMORY_LOCK_UNAVAILABLE");
                 }
                 let v = v.validate(filesystem)?;
-                eprintln!("FS_PROFILE_VALID read_only=true");
+                eprintln!(
+                    "FS_PROFILE_VALID read_only={}",
+                    mode == AccessMode::ReadOnly
+                );
                 winluks::adapter::serve(v)
             }
         }

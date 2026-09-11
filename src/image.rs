@@ -4,15 +4,26 @@ use std::{
     path::Path,
 };
 
-/// No write, resize, discard or path-reopen operation is exposed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AccessMode {
+    #[default]
+    ReadOnly,
+    ReadWrite,
+}
+
+/// One fixed-size local file handle. RW sessions deny sharing; no create or resize.
 pub struct Image {
     file: File,
     len: u64,
+    mode: AccessMode,
 }
 impl Image {
     pub fn open(path: &Path) -> Result<Self> {
+        Self::open_with_mode(path, AccessMode::ReadOnly)
+    }
+    pub fn open_with_mode(path: &Path, mode: AccessMode) -> Result<Self> {
         let mut o = OpenOptions::new();
-        o.read(true);
+        o.read(true).write(mode == AccessMode::ReadWrite);
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
@@ -33,8 +44,19 @@ impl Image {
             {
                 return Err(Error::UnsupportedProfile);
             }
-            o.share_mode(FILE_SHARE_READ)
-                .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+            o.share_mode(if mode == AccessMode::ReadOnly {
+                FILE_SHARE_READ
+            } else {
+                0
+            })
+            .custom_flags(
+                FILE_FLAG_OPEN_REPARSE_POINT
+                    | if mode == AccessMode::ReadWrite {
+                        FILE_FLAG_WRITE_THROUGH
+                    } else {
+                        0
+                    },
+            );
         }
         let file = o.open(path)?;
         let meta = file.metadata()?;
@@ -44,8 +66,13 @@ impl Image {
         #[cfg(unix)]
         {
             use std::os::fd::AsRawFd;
-            // Advisory on Unix; fixtures must be immutable and have no concurrent writer.
-            if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) } != 0 {
+            // Advisory on Unix; uncooperative external writers remain outside this backend.
+            let lock = if mode == AccessMode::ReadOnly {
+                libc::LOCK_SH
+            } else {
+                libc::LOCK_EX
+            };
+            if unsafe { libc::flock(file.as_raw_fd(), lock | libc::LOCK_NB) } != 0 {
                 return Err(Error::BackendIo);
             }
         }
@@ -105,6 +132,7 @@ impl Image {
         Ok(Self {
             file,
             len: meta.len(),
+            mode,
         })
     }
     pub fn len(&self) -> u64 {
@@ -112,6 +140,47 @@ impl Image {
     }
     pub fn is_empty(&self) -> bool {
         self.len == 0
+    }
+    pub fn mode(&self) -> AccessMode {
+        self.mode
+    }
+    pub(crate) fn write_all_at(&self, offset: u64, buf: &[u8]) -> Result<()> {
+        if self.mode != AccessMode::ReadWrite {
+            return Err(Error::ReadOnly);
+        }
+        if offset > self.len || buf.len() as u64 > self.len - offset {
+            return Err(Error::InvalidRange);
+        }
+        if self.file.metadata()?.len() != self.len {
+            return Err(Error::BackendIo);
+        }
+        let mut done = 0;
+        while done < buf.len() {
+            #[cfg(unix)]
+            let n = {
+                use std::os::unix::fs::FileExt;
+                self.file.write_at(&buf[done..], offset + done as u64)?
+            };
+            #[cfg(windows)]
+            let n = {
+                use std::os::windows::fs::FileExt;
+                self.file.seek_write(&buf[done..], offset + done as u64)?
+            };
+            if n == 0 {
+                return Err(Error::BackendIo);
+            }
+            done += n;
+        }
+        Ok(())
+    }
+    pub(crate) fn sync(&self) -> Result<()> {
+        if self.file.metadata()?.len() != self.len {
+            return Err(Error::BackendIo);
+        }
+        if self.mode == AccessMode::ReadWrite {
+            self.file.sync_all()?;
+        }
+        Ok(())
     }
     pub fn read_exact_at(&self, offset: u64, buf: &mut [u8]) -> Result<()> {
         if offset > self.len || buf.len() as u64 > self.len - offset {

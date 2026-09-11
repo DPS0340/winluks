@@ -2,7 +2,7 @@
 use openssl::hash::{Hasher, MessageDigest};
 use std::{fs, path::PathBuf};
 use winluks::{
-    Error, adapter::ReadOnlyAdapter, image::Image, metadata::Metadata, probe::Filesystem,
+    Error, adapter::BlockAdapter, image::Image, metadata::Metadata, probe::Filesystem,
     volume::UnlockedVolume,
 };
 use zeroize::Zeroizing;
@@ -69,8 +69,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "btrfs" => Filesystem::Btrfs,
         _ => return Err("filesystem".into()),
     };
-    let a = ReadOnlyAdapter::new(v.validate(fs)?);
-    assert_eq!(a.write(), Err(Error::ReadOnly));
+    let a = BlockAdapter::new(v.validate(fs)?);
+    assert_eq!(a.write(0, &[0u8; 512]), Err(Error::ReadOnly));
     assert_eq!(a.unmap(), Err(Error::ReadOnly));
     assert!(a.flush(0, 0).is_ok());
     a.stop();

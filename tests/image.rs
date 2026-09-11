@@ -1,5 +1,32 @@
 use std::fs;
-use winluks::{Error, image::Image};
+use winluks::{
+    Error,
+    image::{AccessMode, Image},
+};
+
+#[test]
+fn rw_sessions_are_exclusive_and_do_not_create_or_truncate() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("exclusive.img");
+    assert!(Image::open_with_mode(&p, AccessMode::ReadWrite).is_err());
+    assert!(!p.exists());
+    fs::write(&p, [0x5a; 1024]).unwrap();
+    let ro = Image::open(&p).unwrap();
+    assert!(Image::open_with_mode(&p, AccessMode::ReadWrite).is_err());
+    drop(ro);
+    let rw = Image::open_with_mode(&p, AccessMode::ReadWrite).unwrap();
+    assert_eq!(rw.len(), 1024);
+    assert!(Image::open(&p).is_err());
+    assert!(Image::open_with_mode(&p, AccessMode::ReadWrite).is_err());
+    #[cfg(windows)]
+    {
+        assert!(fs::File::open(&p).is_err());
+        assert!(fs::OpenOptions::new().write(true).open(&p).is_err());
+        assert!(fs::remove_file(&p).is_err());
+    }
+    drop(rw);
+    assert_eq!(fs::read(&p).unwrap(), [0x5a; 1024]);
+}
 #[test]
 fn file_boundaries() {
     let d = tempfile::tempdir().unwrap();

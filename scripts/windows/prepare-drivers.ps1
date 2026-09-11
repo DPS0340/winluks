@@ -1,9 +1,11 @@
 param(
     [Parameter(Mandatory=$true)][ValidateSet('btrfs','ext4')][string]$Filesystem,
     [string]$LabDirectory = 'C:\winluks-lab',
+    [ValidateSet('ro','rw')][string]$AccessMode = 'ro',
     [switch]$TrustPinnedPublishers
 )
 $ErrorActionPreference = 'Stop'
+if ($Filesystem -eq 'ext4' -and $AccessMode -eq 'rw') { throw 'Ext4 publication has not passed its discovery gate' }
 $admin = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (!$admin.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Administrator required' }
 $model = (Get-CimInstance Win32_ComputerSystem).Model
@@ -55,7 +57,7 @@ if ($Filesystem -eq 'btrfs') {
     pnputil.exe /add-driver "$dir\btrfs.inf" /install
     if ($LASTEXITCODE -notin @(0,3010)) { throw 'WinBtrfs driver package install failed' }
     if (!(Test-Path HKLM:\SYSTEM\CurrentControlSet\Services\btrfs)) { throw 'WinBtrfs service was not installed' }
-    New-ItemProperty HKLM:\SYSTEM\CurrentControlSet\Services\btrfs -Name Readonly -PropertyType DWord -Value 1 -Force | Out-Null
+    New-ItemProperty HKLM:\SYSTEM\CurrentControlSet\Services\btrfs -Name Readonly -PropertyType DWord -Value ([int]($AccessMode -eq 'ro')) -Force | Out-Null
 } else {
     $exe = Join-Path $LabDirectory 'ext4fsd.exe'
     $driver = Join-Path $env:ProgramFiles 'Ext2Fsd\Ext2Fsd.sys'
@@ -88,6 +90,7 @@ if ($Filesystem -eq 'btrfs') {
     secure_boot = (Confirm-SecureBootUEFI)
     device_guard = (Get-CimInstance -Namespace root\Microsoft\Windows\DeviceGuard -ClassName Win32_DeviceGuard | Select-Object SecurityServicesConfigured,SecurityServicesRunning)
     filesystem = $Filesystem
+    access_mode = $AccessMode
     reboot_required = $true
 } | ConvertTo-Json -Depth 4 | Set-Content "$LabDirectory\driver-setup.json"
 Write-Output 'Reboot the test VM before publishing any fixture. Installation is not a passed G0 gate.'

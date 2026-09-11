@@ -108,6 +108,23 @@ pub fn decrypt_sectors(
     first_sector: u64,
     ciphertext: &[u8],
 ) -> Result<Zeroizing<Vec<u8>>> {
+    crypt_sectors(key, first_sector, ciphertext, Mode::Decrypt)
+}
+
+pub fn encrypt_sectors(
+    key: &[u8],
+    first_sector: u64,
+    plaintext: &[u8],
+) -> Result<Zeroizing<Vec<u8>>> {
+    crypt_sectors(key, first_sector, plaintext, Mode::Encrypt)
+}
+
+fn crypt_sectors(
+    key: &[u8],
+    first_sector: u64,
+    ciphertext: &[u8],
+    mode: Mode,
+) -> Result<Zeroizing<Vec<u8>>> {
     let cipher = match key.len() {
         32 => Cipher::aes_128_xts(),
         64 => Cipher::aes_256_xts(),
@@ -126,7 +143,7 @@ pub fn decrypt_sectors(
                 .ok_or(Error::InvalidRange)?
                 .to_le_bytes(),
         );
-        let mut c = Crypter::new(cipher, Mode::Decrypt, key, Some(&iv))?;
+        let mut c = Crypter::new(cipher, mode, key, Some(&iv))?;
         c.pad(false);
         let n = c.update(sector, &mut *tmp)?;
         let last = c.finalize(&mut tmp[n..])?;

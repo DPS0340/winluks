@@ -44,16 +44,16 @@ jobs:
         run: |
           cl /nologo /W4 /I "$env:WINSPD_SDK/inc" native/g0.c native/winspd_shim.c /Fe:winluks-g0.exe /link /LIBPATH:"$env:WINSPD_SDK/lib" winspd_x64.lib ole32.lib advapi32.lib
           if ($LASTEXITCODE) { throw 'G0 build failed' }
-          cargo build --locked --release --example oracle --features vendored-openssl
+          cargo build --locked --release --examples --features vendored-openssl
           if ($LASTEXITCODE) { throw 'oracle build failed' }
       - name: Package test build
         shell: pwsh
         run: |
           New-Item -ItemType Directory dist | Out-Null
-          Copy-Item target/release/winluks2-ro.exe, LICENSE, docs/THIRD_PARTY.md dist/
+          Copy-Item target/release/winluks2.exe, LICENSE, docs/THIRD_PARTY.md dist/
           # MSI stream identifiers use underscores; the PE import name uses a hyphen.
           Copy-Item "$env:WINSPD_SDK/extracted/winspd_x64.dll" dist/winspd-x64.dll
-          Copy-Item winluks-g0.exe, target/release/examples/oracle.exe dist/
+          Copy-Item winluks-g0.exe, target/release/examples/oracle.exe, target/release/examples/rw_oracle.exe dist/
           Copy-Item third_party/WinSpd-LICENSE.txt dist/
           @(
             "Application source and build scripts: https://github.com/DPS0340/winluks/tree/$env:GITHUB_SHA",

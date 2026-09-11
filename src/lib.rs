@@ -1,4 +1,4 @@
-//! Restricted, read-only LUKS2 image reader. See docs/design-v0.2.0.ko.md.
+//! Restricted LUKS2 image bridge. RO is the default; writes require an exclusive RW session.
 pub mod adapter;
 pub mod crypto;
 pub mod error;
