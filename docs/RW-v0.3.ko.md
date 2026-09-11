@@ -19,6 +19,7 @@ fixture로 비교한다.
   Windows 파일 핸들의 write-through와 매 쓰기 후 `sync_all`을 사용하며, backing-file flush가
   성공한 뒤에만 쓰기를 완료한다. FUA가 없는 요청도 같은 계약을 따른다. 이것이 전체 파일의
   트랜잭션이나 정전 중 섹터 쓰기의 원자성을 제공하는 것은 아니다.
+  파일시스템이 아직 브리지로 전달하지 않은 캐시는 별개이며, 정상 종료에서 함께 flush한다.
 - short write는 남은 바이트를 계속 쓰고, 쓰기 또는 flush 실패는 세션을 영구 오류 상태로
   바꾼다. 이후 쓰기를 성공 처리하지 않는다. 해당 종료는 `UNCLEAN_CLOSE`로 보고한다.
 - WinBtrfs v1.10과 WinSpd의 기존 바이너리를 그대로 사용한다. RW 시험 VM에서는

@@ -1,0 +1,78 @@
+{
+  "date": "2026-09-11",
+  "source_commit": "743d0eda78b153c6b2c7f8bd1f4d0d3b9f4a4d6a",
+  "build_url": "https://github.com/DPS0340/winluks/actions/runs/34605278803",
+  "binary_sha256": "cedc54b7e499aceb40084a8019856dcfdd59e8fce75bf96cf5d85d1477003e55",
+  "environment": {
+    "hypervisor": "QEMU/KVM",
+    "virtual_disks_only": true,
+    "os": "Windows 11 Enterprise Evaluation 25H2 10.0.26200.6584",
+    "secure_boot": false,
+    "hvci_vbs_running": false,
+    "vcpus": 4,
+    "ram_gib": 8,
+    "btrfs_readonly_registry_policy": 0,
+    "winbtrfs_version": "1.10",
+    "winbtrfs_driver_sha256": "3c46f0f82726e374cec3d2e36defd2c672c68903895a510a29762f6f93866797",
+    "winspd_version": "1.0.20357",
+    "winspd_driver_sha256": "e2e5e2e02452f2a4d09e9ec3c5375d2d8512d075523a3a6bf88e246b343184c9"
+  },
+  "windows_written_image_sha256": "d21bde7a752dac7932dce05e32fc27d0580ce0a0cd76a3bed430d29e4f089383",
+  "linux_verification": {
+    "passed": true,
+    "filesystem": "btrfs",
+    "header_unchanged": true,
+    "canonical_source_unchanged": true,
+    "btrfs_check_readonly_passed": true,
+    "windows_file_hashes_match": true,
+    "payload_matches_independent_pattern": true,
+    "sparse_allocation_verified": true,
+    "linux_return_file_written": true,
+    "file_count": 9,
+    "image_sha256": "af8ba98e2c7a30147401e5e5950ef37a55369dce8e0ef8d509621715ae3d1511"
+  },
+  "windows_ro_return": {
+    "mounted": {
+      "passed": true,
+      "disk_read_only": true,
+      "mutation_errors": {
+        "delete": -2147024877,
+        "create": -2146233087,
+        "raw_write": 1117,
+        "rename": -2147024877
+      },
+      "fixture": "btrfs-pbkdf2-512-sha256",
+      "volume_read_only": true,
+      "file_hashes_match": true
+    },
+    "file_count": 9,
+    "closed": {
+      "device_removed": true,
+      "image_sha256": "af8ba98e2c7a30147401e5e5950ef37a55369dce8e0ef8d509621715ae3d1511",
+      "source_unchanged": true,
+      "os_build": "26200.6584"
+    },
+    "console": {
+      "exit_code": 0,
+      "password_logged": false,
+      "clean_close": true,
+      "busy_close_rejected": false,
+      "read_only": true,
+      "reads": 71,
+      "write_callbacks": 0,
+      "unmap_callbacks": 0,
+      "flush_callbacks": 1,
+      "utf8_password_entered": true,
+      "ctrl_c": true
+    }
+  },
+  "cli_policy": {
+    "ext4_rw_gate_blocked": true,
+    "rw_conflicts_with_ro_reader": true,
+    "conflicting_modes_rejected": true,
+    "default_ro": true,
+    "published_device_count": 1
+  },
+  "cli_policy_context": "One RO session was already published; policy checks created no additional device. Default mode reached the console requirement through a shared RO image open; explicit RW was denied while that reader existed.",
+  "limitation": "The return file and all file hashes were checked after orderly OS handoff, not forced power loss. Raw-write rejection is an observed Win32 error with read controls and unchanged image bytes, not driver-boundary mutation tracing."
+}

@@ -76,10 +76,12 @@ try {
         if ((Get-FileHash -LiteralPath $destination).Hash -ne $file.Value.sha256) { throw 'Copied file hash mismatch' }
     }
     $report.file_hashes_match=$true
+    $mutationFile=$fixture.files.PSObject.Properties.Name | Select-Object -First 1
+    if (!$mutationFile -or !(Test-Path -LiteralPath (Join-Path $Root $mutationFile) -PathType Leaf)) { throw 'An existing fixture file is required for mutation checks' }
     $operations=@{
         create={ [IO.File]::WriteAllBytes((Join-Path $Root 'write-must-fail.bin'),[byte[]](1,2,3)) }
-        rename={ Move-Item -LiteralPath (Join-Path $Root 'hello.txt') -Destination (Join-Path $Root 'renamed-must-fail.txt') }
-        delete={ Remove-Item -LiteralPath (Join-Path $Root 'empty') }
+        rename={ Move-Item -LiteralPath (Join-Path $Root $mutationFile) -Destination (Join-Path $Root 'renamed-must-fail.txt') }
+        delete={ Remove-Item -LiteralPath (Join-Path $Root $mutationFile) }
     }
     foreach($name in $operations.Keys) {
         $errorCode=$null

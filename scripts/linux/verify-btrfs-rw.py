@@ -83,6 +83,7 @@ def main():
             check()
         finally: run(['cryptsetup','close',name])
     (args.results/'expected.json').write_text(json.dumps(expected,ensure_ascii=False,indent=2)+'\n')
+    (args.results/'ro-manifest.json').write_text(json.dumps({'name':expected['fixture'], 'files':expected['files']},ensure_ascii=False,indent=2)+'\n')
     result={'passed':True,'filesystem':'btrfs','header_unchanged':True,'canonical_source_unchanged':True,
             'btrfs_check_readonly_passed':True,'windows_file_hashes_match':True,
             'payload_matches_independent_pattern':True,'sparse_allocation_verified':True,

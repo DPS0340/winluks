@@ -1,0 +1,113 @@
+{
+  "date": "2026-09-11",
+  "source_commit": "743d0eda78b153c6b2c7f8bd1f4d0d3b9f4a4d6a",
+  "build_url": "https://github.com/DPS0340/winluks/actions/runs/34605278803",
+  "environment": {
+    "hypervisor": "QEMU/KVM",
+    "virtual_disks_only": true,
+    "os": "Windows 11 Enterprise Evaluation 25H2 10.0.26200.6584",
+    "secure_boot": false,
+    "hvci_vbs_running": false,
+    "vcpus": 4,
+    "ram_gib": 8,
+    "btrfs_readonly_registry_policy": 0,
+    "winbtrfs_version": "1.10",
+    "winbtrfs_driver_sha256": "3c46f0f82726e374cec3d2e36defd2c672c68903895a510a29762f6f93866797",
+    "winspd_version": "1.0.20357",
+    "winspd_driver_sha256": "e2e5e2e02452f2a4d09e9ec3c5375d2d8512d075523a3a6bf88e246b343184c9"
+  },
+  "mounted": {
+    "passed": true,
+    "phase": "write",
+    "disk_writable": true,
+    "filesystem_writable": true,
+    "file_count": 8,
+    "operations": [
+      "create",
+      "unaligned-overwrite",
+      "append",
+      "truncate",
+      "sparse",
+      "unicode",
+      "copy",
+      "rename",
+      "delete",
+      "readback"
+    ]
+  },
+  "exclusive_backing_handle": {
+    "Write_rejected": true,
+    "Read_rejected": true
+  },
+  "busy_close": {
+    "file_hash_matches": true,
+    "still_published": true
+  },
+  "closed": {
+    "image_sha256": "d21bde7a752dac7932dce05e32fc27d0580ce0a0cd76a3bed430d29e4f089383",
+    "device_removed": true,
+    "binary_sha256": "cedc54b7e499aceb40084a8019856dcfdd59e8fce75bf96cf5d85d1477003e55",
+    "os": "10.0.26200",
+    "device_guard": {
+      "VirtualizationBasedSecurityStatus": 0,
+      "SecurityServicesRunning": [
+        0
+      ]
+    },
+    "image_bytes": 268435456,
+    "secure_boot": false
+  },
+  "console": {
+    "exit_code": 0,
+    "password_logged": false,
+    "clean_close": true,
+    "busy_close_rejected": true,
+    "read_only": false,
+    "reads": 113,
+    "write_callbacks": 11,
+    "unmap_callbacks": 0,
+    "flush_callbacks": 1,
+    "utf8_password_entered": true,
+    "ctrl_c": true,
+    "busy_close_win32_code": 5
+  },
+  "reopen": {
+    "mounted": {
+      "passed": true,
+      "phase": "reopen",
+      "disk_writable": true,
+      "filesystem_writable": true,
+      "file_count": 8,
+      "operations": [
+        "create",
+        "unaligned-overwrite",
+        "append",
+        "truncate",
+        "sparse",
+        "unicode",
+        "copy",
+        "rename",
+        "delete",
+        "readback"
+      ]
+    },
+    "closed": {
+      "image_sha256": "d21bde7a752dac7932dce05e32fc27d0580ce0a0cd76a3bed430d29e4f089383",
+      "device_removed": true
+    },
+    "console": {
+      "exit_code": 0,
+      "password_logged": false,
+      "clean_close": true,
+      "busy_close_rejected": false,
+      "read_only": false,
+      "reads": 40,
+      "write_callbacks": 0,
+      "unmap_callbacks": 0,
+      "flush_callbacks": 1,
+      "utf8_password_entered": true,
+      "ctrl_c": true
+    }
+  },
+  "limitation": "Generated Btrfs fixture only; no independent storage audit or full power-loss/failure matrix. ext4 Windows publication remains blocked."
+}

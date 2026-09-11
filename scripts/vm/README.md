@@ -81,3 +81,43 @@ The test harness `test-mounted.ps1` deliberately attempts file creation, rename,
 and raw writes only after checking the QEMU model, winluks disk identity and read-only flags.
 Use only generated fixtures. Capture its JSON, normal-close output and full encrypted source
 hash before shutting down a test clone.
+
+## v0.3 Btrfs RW
+
+Clone the powered-off Btrfs guest for RW experiments. Inside that disposable clone, run
+`prepare-drivers.ps1 -Filesystem btrfs -AccessMode rw -TrustPinnedPublishers`, then reboot.
+Use `winluks2.exe open --image C:\fixtures\working-copy.img --keyslot 0 --filesystem btrfs --read-write`
+from an administrator console. The same driver configuration also supports the default RO mode.
+Use a new copy of a canonical fixture for each file-level test, and preserve the canonical file.
+
+While the volume is published, run `test-writable.ps1` with its fixture manifest, drive root,
+the exact `WinSpd winluks RW` disk number and a results directory. It generates expected file
+hashes. Keep a file handle open to test Ctrl+C's `CLOSE_BLOCKED` behavior; release it and retry.
+After a normal close, reopen the same image and run the script with `-VerifyOnly`.
+
+Once detached, copy that image and `expected.json` to the Linux VM:
+
+```sh
+sudo python3 scripts/linux/verify-btrfs-rw.py \
+  --manifest /home/lab/fixtures/btrfs-pbkdf2-512-sha256/manifest.json \
+  --image /home/lab/windows-rw/volume.img --expected /home/lab/windows-rw/expected.json \
+  --results /home/lab/windows-rw/verified --write-return-file
+```
+
+This checks unchanged LUKS headers, `btrfs check --readonly`, independent content and sparse
+allocation. The optional return step records a new Linux file after the read-only verification,
+unmounts cleanly and checks again. Transfer it back to Windows and open with `--read-only`;
+use the generated `ro-manifest.json` with `test-mounted.ps1` for file hashes and mutation rejection.
+
+The separate **block** oracle deliberately overwrites filesystem structures in disposable
+copies to test cipher/range boundaries. Do not mount those copies:
+
+```sh
+cargo run --release --example rw_oracle -- CANONICAL_MANIFEST NEW_OUTPUT_DIRECTORY
+sudo python3 scripts/linux/verify-block-writes.py \
+  --fixture-root /home/lab --writes-root /home/lab/rw-core --results /home/lab/rw-core-results.json
+```
+
+Keep the output hierarchy aligned with the canonical manifests (for example,
+`rw-core/matrix/FIXTURE/writes.json` corresponds to `matrix/FIXTURE/manifest.json`).
+The Linux verifier uses original Linux plaintext and read-only dm-crypt mappings as its oracle.

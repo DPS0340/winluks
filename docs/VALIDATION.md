@@ -1,6 +1,66 @@
 # Validation record
 
-Initial implementation session: 2026-09-11. Status is updated from executed commands only.
+Initial implementation and RW extension: 2026-09-11. Status is updated from executed commands only.
+
+## v0.3 Btrfs RO/RW
+
+The production code at `743d0ed` passed [Linux and Windows CI](https://github.com/DPS0340/winluks/actions/runs/34605278803).
+Its hash-verified Windows artifact was then exercised in a separate RW clone of the Btrfs
+guest. The test profile remains Windows 11 Enterprise Evaluation 25H2 `26200.6584`,
+QEMU/KVM, four vCPUs, 8 GiB RAM, Secure Boot off and HVCI/VBS off. The pinned WinBtrfs
+v1.10 driver had its `Readonly` registry policy set to 0. All storage was disposable virtual files.
+
+| Executed check | Result |
+|---|---|
+| Linux build, format, Clippy and regression tests | Passed; 29 tests |
+| Windows MSVC tests, WinSpd build and packaging | Passed; 28 tests (the backend-fault injection test is Unix-only) |
+| RO core regression after the cipher refactor | 30/30 fixtures, complete plaintext/source hashes and boundary/policy checks |
+| RW core differential oracle | 30/30 fixtures; six writes per image and all 240 MiB independently compared through Linux dm-crypt |
+| LUKS boundary invariants | Image length and header/keyslot bytes preserved; canonical fixtures unchanged |
+| Windows Btrfs file operations | Create, unaligned overwrite, append, truncate, sparse, Unicode, copy, rename, delete and readback passed |
+| Backing-file exclusivity | A second read handle and a second write handle were both rejected during RW |
+| Busy close and retry | An actually held file caused `CLOSE_BLOCKED`; the session stayed usable; closing the handle and retrying completed cleanly |
+| Windows RW reopen | All eight resulting files retained their expected sizes and hashes; deleted paths remained absent |
+| Windows → Linux | `btrfs check --readonly`, RO mount, file hashes, independent payload/text and sparse-allocation checks passed |
+| Linux → Windows | Linux wrote a return file and unmounted cleanly; a second filesystem check and Windows RO verification of all nine files passed |
+| RO in the RW-configured guest | Disk/volume RO flags, create/rename/delete/raw-write rejection and unchanged complete image hash passed |
+| CLI policy | Default RO, mutually exclusive mode flags, RW conflict with an RO reader and ext4 RW publication gate passed |
+| Normal shutdown | Each final session exited 0 with `clean=true`; the virtual device disappeared; no synthetic password appeared in captured console output |
+
+The block-write matrix uses the same 24 KDF/key/hash/filesystem combinations, four mixed
+volume/keyslot key-size cases and two distinct-password slot-1 cases described below. Its
+write producer used `b367dbc`; the later production changes address session discovery,
+shutdown and failure handling. Each disposable copy receives first/last-sector writes,
+multi-sector and overlapping writes, and a 1 MiB write. Linux compares the entire decrypted
+payload with its original plaintext plus independently calculated changes. Those particular
+copies deliberately overwrite filesystem structures and are never mounted.
+
+The separate filesystem test starts from a fresh Btrfs image. Windows produces the file
+manifest, and Linux verifies both its hashes and independently generated content after
+the Windows session has closed. Linux then writes a UTF-8 return file, unmounts and checks
+the filesystem again. The returned image is opened RO in Windows; after closing, its
+complete SHA256 is unchanged. This checks persistence across OS handoff as well as local
+readback. It does not simulate sudden power loss or prove sector-write atomicity.
+
+For partitionless WinBtrfs volumes, disk-extents discovery returned `ERROR_INVALID_FUNCTION`.
+The implementation instead queries the storage descriptor directly on each volume handle
+and matches the current session's random SCSI serial. That exact volume is locked, flushed
+and dismounted on RW close. Drive letters are not used to infer the shutdown target.
+
+Machine-readable reports: [RW core and RO regression](evidence/rw-core.json),
+[Windows Btrfs RW lifecycle](evidence/btrfs-rw.json) and
+[Linux/Windows round trip](evidence/btrfs-rw-roundtrip.json).
+The [RW contract](RW-v0.3.ko.md) and [VM guide](../scripts/vm/README.md) describe reproduction.
+These reports contain generated-fixture observations, hashes and environment details,
+without credentials, disk images or captured plaintext.
+
+The complete failure/power-loss matrix, driver-boundary mutation tracing and independent
+security/storage review remain incomplete. ext4 Windows publication remains blocked in
+both modes by the existing discovery gate. No real-user-disk or release-readiness claim is made.
+
+## Historical v0.2 RO baseline
+
+The records below describe the original RO implementation and its tested artifacts.
 
 | Evidence | Status |
 |---|---|
