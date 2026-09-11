@@ -19,13 +19,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         dir.join(m["password_file"].as_str().ok_or("password_file field")?),
     )?);
     let im = Image::open(&image_path)?;
+    let slot = u32::try_from(m["keyslot"].as_u64().ok_or("keyslot field")?)?;
     let meta = Metadata::read(&im)?;
     assert_eq!(meta.volume_length(), m["plaintext_bytes"].as_u64().unwrap());
     assert!(matches!(
-        UnlockedVolume::unlock(Image::open(&image_path)?, 0, b"intentionally-wrong"),
+        UnlockedVolume::unlock(Image::open(&image_path)?, slot, b"intentionally-wrong"),
         Err(Error::UnlockFailed)
     ));
-    let v = UnlockedVolume::unlock(im, 0, &key)?;
+    if m["different_slot_password"].as_bool() == Some(true) && meta.keyslots().contains(&0) {
+        assert!(matches!(
+            UnlockedVolume::unlock(Image::open(&image_path)?, 0, &key),
+            Err(Error::UnlockFailed)
+        ));
+    }
+    let v = UnlockedVolume::unlock(im, slot, &key)?;
     let mut h = Hasher::new(MessageDigest::sha256())?;
     let mut o = 0;
     while o < v.len() {

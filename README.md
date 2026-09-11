@@ -54,3 +54,7 @@ different units. Image byte zero must be the LUKS2 header, not a GPT/MBR or qcow
 GPL-3.0-or-later. Driver binaries and Microsoft installation media are not redistributed here.
 OpenSSL and RustCrypto Argon2 supply cryptographic primitives. The dependency lockfile pins
 the Rust dependency graph. See [third-party notes](docs/THIRD_PARTY.md).
+
+WinSpd - Windows Storage Proxy Driver, Copyright (C) Bill Zissimopoulos.
+[WinSpd source](https://github.com/winfsp/winspd) and
+[license](third_party/WinSpd-LICENSE.txt).

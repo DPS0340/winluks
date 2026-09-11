@@ -42,3 +42,30 @@ fn changing_size_is_an_io_error() {
         .unwrap();
     assert_eq!(i.read_exact_at(0, &mut [0u8; 512]), Err(Error::BackendIo));
 }
+#[cfg(windows)]
+#[test]
+fn windows_session_prevents_write_and_delete_handles() {
+    let d = tempfile::tempdir().unwrap();
+    let p = d.path().join("immutable.img");
+    fs::write(&p, [0u8; 512]).unwrap();
+    let image = Image::open(&p).unwrap();
+    assert!(fs::OpenOptions::new().write(true).open(&p).is_err());
+    assert!(fs::remove_file(&p).is_err());
+    drop(image);
+    fs::remove_file(&p).unwrap();
+}
+#[cfg(windows)]
+#[test]
+fn windows_device_remote_and_stream_paths_are_rejected() {
+    for path in [
+        r"\\.\PhysicalDrive0",
+        r"\\server\share\disk.img",
+        r"C:\disk.img:stream",
+        r"C:relative.img",
+    ] {
+        assert!(matches!(
+            Image::open(std::path::Path::new(path)),
+            Err(Error::UnsupportedProfile)
+        ));
+    }
+}

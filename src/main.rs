@@ -6,7 +6,11 @@ use winluks::{Error, Result, image::Image, metadata::Metadata, probe::Filesystem
 #[cfg(windows)]
 use zeroize::Zeroizing;
 #[derive(Parser)]
-#[command(version, about = "Experimental read-only LUKS2 partition-image bridge")]
+#[command(
+    version,
+    about = "Experimental read-only LUKS2 partition-image bridge",
+    long_about = "Experimental read-only LUKS2 partition-image bridge.\n\nWinSpd - Windows Storage Proxy Driver, Copyright (C) Bill Zissimopoulos.\nhttps://github.com/winfsp/winspd"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,

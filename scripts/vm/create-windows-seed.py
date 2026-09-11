@@ -17,9 +17,12 @@ ap.add_argument('--output',type=Path,required=True)
 ap.add_argument('--ssh-public-key',type=Path,required=True)
 a=ap.parse_args()
 a.output.mkdir(parents=True,mode=0o700,exist_ok=True)
+if any((a.output/name).exists() for name in ('windows-password.key','windows-seed.iso')):
+    ap.error('refusing to overwrite existing private setup credentials or media')
 password='WL-'+''.join(secrets.choice(string.ascii_letters+string.digits) for _ in range(28))+'!'
-(a.output/'windows-password.key').write_text(password)
-(a.output/'windows-password.key').chmod(0o600)
+import os
+with os.fdopen(os.open(a.output/'windows-password.key',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as f:
+    f.write(password)
 xml=fr'''<?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
  <settings pass="windowsPE">
@@ -78,6 +81,7 @@ ET.fromstring(xml)
 iso=pycdlib.PyCdlib();iso.new(interchange_level=3,joliet=3,vol_ident='WINLUKS_SEED')
 for name,data in [('Autounattend.xml',xml.encode()),('bootstrap.ps1',bootstrap.encode()),('lab.pub',a.ssh_public_key.read_bytes())]:
     iso.add_fp(io.BytesIO(data),len(data),iso_path='/'+name.upper()+';1',joliet_path='/'+name)
-iso.write(str(a.output/'windows-seed.iso'));iso.close()
-(a.output/'windows-seed.iso').chmod(0o600)
+with os.fdopen(os.open(a.output/'windows-seed.iso',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as f:
+    iso.write_fp(f)
+iso.close()
 print('Private seed media created; attach only to the disposable VM.')

@@ -25,8 +25,10 @@ def sha(path):
         return hashlib.file_digest(f, 'sha256').hexdigest()
 
 
-def fixture(root, fs, kdf, bits, hash_name, slot_bits=None):
+def fixture(root, fs, kdf, bits, hash_name, slot_bits=None, alternate_slot=False):
     name = f'{fs}-{kdf}-{bits}-{hash_name}' + (f'-slot{slot_bits}' if slot_bits else '')
+    if alternate_slot:
+        name += '-alternate-slot'
     dest = root / name
     dest.mkdir(mode=0o700)
     image, key, plain = dest/'volume.img', dest/'password.key', dest/'plaintext.raw'
@@ -44,6 +46,16 @@ def fixture(root, fs, kdf, bits, hash_name, slot_bits=None):
     if slot_bits:
         args += ['--keyslot-key-size', str(slot_bits), '--keyslot-cipher', 'aes-xts-plain64']
     run(args + [str(image)])
+    selected_slot = 0
+    if alternate_slot:
+        old_key = dest/'old-password.key'
+        key.rename(old_key)
+        key.write_bytes(('다른슬롯-' + secrets.token_hex(24)).encode())
+        key.chmod(0o600)
+        run(['cryptsetup','luksAddKey','--batch-mode','--key-slot','1','--key-file',str(old_key),
+             '--new-keyfile',str(key),'--pbkdf','pbkdf2','--pbkdf-force-iterations','1000',
+             '--hash','sha512' if hash_name=='sha256' else 'sha256',str(image)])
+        selected_slot = 1
     name_map = 'winluks-fixture-' + secrets.token_hex(6)
     mapped = Path('/dev/mapper') / name_map
     mounted = False
@@ -94,7 +106,12 @@ def fixture(root, fs, kdf, bits, hash_name, slot_bits=None):
             metadata = json.loads(run(['cryptsetup', 'luksDump', '--dump-json-metadata', str(image)]))
             # Metadata includes only synthetic salts/digests. Keep it out of shared logs.
             (dest/'metadata.local.json').write_text(json.dumps(metadata, indent=2))
-            manifest = dict(name=name,filesystem=fs,kdf=kdf,key_bits=bits,hash=hash_name,keyslot=0,
+            selected = metadata['keyslots'][str(selected_slot)]
+            manifest = dict(name=name,filesystem=fs,kdf=selected['kdf']['type'],key_bits=bits,
+                            hash=selected['af']['hash'],keyslot=selected_slot,
+                            keyslot_key_bits=selected['area']['key_size']*8,
+                            digest_hash=metadata['digests']['0']['hash'],
+                            different_slot_password=alternate_slot,
                             image='volume.img',password_file='password.key',plaintext='plaintext.raw',
                             image_sha256=before,plaintext_sha256=sha(plain),plaintext_bytes=plain.stat().st_size,
                             files=files,kernel=platform.release(),cryptsetup=run(['cryptsetup','--version']).decode().strip(),
@@ -114,6 +131,7 @@ def main():
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--matrix', action='store_true')
     ap.add_argument('--cross-key-sizes', action='store_true')
+    ap.add_argument('--alternate-slot', action='store_true', help='different password and hash in slot 1; original slot 0 remains')
     args = ap.parse_args()
     if os.geteuid() != 0:
         ap.error('run as root inside a disposable Linux VM')
@@ -128,10 +146,10 @@ def main():
     for fs in ['ext4','btrfs']:
         if args.cross_key_sizes:
             for bits,slot in [(256,512),(512,256)]:
-                fixture(root,fs,'pbkdf2',bits,'sha256',slot)
+                fixture(root,fs,'pbkdf2',bits,'sha256',slot,args.alternate_slot)
             continue
         for kdf,bits,hash_name in combos:
-            fixture(root,fs,kdf,bits,hash_name)
+            fixture(root,fs,kdf,bits,hash_name,alternate_slot=args.alternate_slot)
 
 
 if __name__ == '__main__':

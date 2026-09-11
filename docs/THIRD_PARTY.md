@@ -24,3 +24,21 @@ page-aligned key allocation is locked where possible; failure is reported, not h
 
 Source revisions and binary release identities are recorded separately. A release name or
 successful signature check is not proof of HVCI compatibility or the absence of hidden writes.
+
+## Executed Windows inputs
+
+| Input | SHA256 |
+|---|---|
+| WinSpd x64 driver 1.0.20357 | `e2e5e2e02452f2a4d09e9ec3c5375d2d8512d075523a3a6bf88e246b343184c9` |
+| WinBtrfs v1.10 amd64 driver | `3c46f0f82726e374cec3d2e36defd2c672c68903895a510a29762f6f93866797` |
+| Ext4Fsd v0.71 amd64 driver | `06f6b4a6bc7aaf568d0442a3415394b2b7806c1bd94d35b314bebfa0993898d9` |
+| Microsoft Visual C++ v14 x64 installer | `843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c` |
+
+The current Microsoft runtime permalink may change; the lab setup fails closed on a hash
+change. Obtain newer runtimes from [Microsoft's official page](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)
+and deliberately update the pin after verification. Windows licensing and runtime distribution
+terms apply separately from this source repository. CI artifacts contain source pointers,
+this attribution file and [WinSpd's full license](../third_party/WinSpd-LICENSE.txt).
+
+WinSpd - Windows Storage Proxy Driver, Copyright (C) Bill Zissimopoulos.
+[Upstream repository](https://github.com/winfsp/winspd).

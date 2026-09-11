@@ -60,3 +60,24 @@ baseline. Make a separate disposable copy for each filesystem. Run `prepare-driv
 as administrator in each copy, reboot, then use `test-g0.ps1` with the CI G0 executable and
 a **plaintext** fixture manifest. The report deliberately does not turn uncollected mutation
 tracing into a passed gate. Never initialize or format a RAW disk to make G0 appear to pass.
+
+The executed Btrfs profile uses Secure Boot **off** and VBS/HVCI **off**. WinBtrfs v1.10
+failed to load with the clean VM's Secure Boot policy enabled. Keep that result distinct
+from the successful experimental profile; record the actual guest security state each time.
+
+For unattended driver setup, `-TrustPinnedPublishers` explicitly enrolls the validated,
+hash-pinned WinSpd/WinBtrfs catalog signing certificates in the disposable guest's
+TrustedPublisher store. It does not supply replacement driver signatures. Ext4Fsd's pinned
+installer omits its referenced catalog; the script registers the unchanged Microsoft-signed
+filesystem driver as a system-start service and sets RO policy before reboot.
+
+```powershell
+.\prepare-drivers.ps1 -Filesystem btrfs -TrustPinnedPublishers
+# In the independent ext4 clone:
+.\prepare-drivers.ps1 -Filesystem ext4 -TrustPinnedPublishers
+```
+
+The test harness `test-mounted.ps1` deliberately attempts file creation, rename, deletion
+and raw writes only after checking the QEMU model, winluks disk identity and read-only flags.
+Use only generated fixtures. Capture its JSON, normal-close output and full encrypted source
+hash before shutting down a test clone.

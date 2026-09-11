@@ -54,6 +54,12 @@ jobs:
           # MSI stream identifiers use underscores; the PE import name uses a hyphen.
           Copy-Item "$env:WINSPD_SDK/extracted/winspd_x64.dll" dist/winspd-x64.dll
           Copy-Item winluks-g0.exe, target/release/examples/oracle.exe dist/
+          Copy-Item third_party/WinSpd-LICENSE.txt dist/
+          @(
+            "Application source and build scripts: https://github.com/DPS0340/winluks/tree/$env:GITHUB_SHA",
+            'WinSpd corresponding source: https://github.com/winfsp/winspd/archive/55c53bc454afbbba38bd1692f52beb77ed59142f.zip',
+            'Rust dependency and vendored OpenSSL source versions are fixed by Cargo.lock; fetch them with cargo vendor --locked.'
+          ) | Set-Content dist/SOURCES.txt
           $hashes = Get-ChildItem dist -File | Where-Object Name -ne 'SHA256.txt' | Get-FileHash -Algorithm SHA256
           $hashes | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path $_.Path -Leaf) } | Set-Content dist/SHA256.txt
       - uses: actions/upload-artifact@v4
