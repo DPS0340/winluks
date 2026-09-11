@@ -26,5 +26,12 @@
     "mutation_trace": "not_collected",
     "source_unchanged": true
   },
-  "interpretation": "G0-E No-Go: running pinned driver did not expose a filesystem volume on the partitionless disk. Mutation tracing was not collected."
+  "interpretation": "G0-E No-Go: running pinned driver did not expose a filesystem volume on the partitionless disk. Mutation tracing was not collected.",
+  "g0_binary_source_commit": "047994b0a8433ab586162aa32bbc1a1c88c5d693",
+  "g0_binary_sha256": "cda811d8ed90ad1788e0888697052bb9da845db4852f8c1c6a691b567b70d6ec",
+  "consumer_driver_sha256": "06f6b4a6bc7aaf568d0442a3415394b2b7806c1bd94d35b314bebfa0993898d9",
+  "driver_services_running": [
+    "Ext2Fsd",
+    "WinSpd"
+  ]
 }

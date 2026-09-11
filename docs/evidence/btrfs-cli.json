@@ -1,0 +1,47 @@
+{
+  "date": "2026-09-11",
+  "source_commit": "f79856e62902d1a81b70e9772a6e640f9aceb39b",
+  "build_url": "https://github.com/DPS0340/winluks/actions/runs/34601172950",
+  "environment": {
+    "hypervisor": "QEMU/KVM",
+    "virtual_disks_only": true,
+    "os": "Windows 11 Enterprise Evaluation 25H2 10.0.26200.6584",
+    "secure_boot": false,
+    "hvci_vbs_running": false,
+    "vcpus": 4,
+    "ram_gib": 8
+  },
+  "mounted": {
+    "passed": true,
+    "disk_read_only": true,
+    "mutation_errors": {
+      "delete": -2147024877,
+      "create": -2146233087,
+      "raw_write": 1117,
+      "rename": -2147024877
+    },
+    "fixture": "btrfs-pbkdf2-512-sha256",
+    "volume_read_only": true,
+    "file_hashes_match": true
+  },
+  "closed": {
+    "security_services_running": [
+      0
+    ],
+    "vbs_status": 0,
+    "device_removed": true,
+    "binary_sha256": "ad62752d45fcf1db4fbd124cfebaaceb851d23b078d1a605027fd8200b6a87b2",
+    "source_unchanged": true,
+    "secure_boot": false
+  },
+  "console": {
+    "utf8_password_entered": true,
+    "password_logged": false,
+    "ctrl_c": true,
+    "exit_code": 0,
+    "reads": 53,
+    "write_callbacks": 0,
+    "unmap_callbacks": 0
+  },
+  "limitation": "The tested success and mutation paths pass; the full G2 failure/lifecycle matrix and independent review remain incomplete."
+}

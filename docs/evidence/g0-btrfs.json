@@ -43,5 +43,12 @@
     "volume_read_only": true,
     "file_hashes_match": true
   },
-  "interpretation": "G0-B passed in this profile; full G2 failure matrix remains incomplete."
+  "interpretation": "G0-B passed in this profile; full G2 failure matrix remains incomplete.",
+  "g0_binary_source_commit": "047994b0a8433ab586162aa32bbc1a1c88c5d693",
+  "g0_binary_sha256": "cda811d8ed90ad1788e0888697052bb9da845db4852f8c1c6a691b567b70d6ec",
+  "consumer_driver_sha256": "3c46f0f82726e374cec3d2e36defd2c672c68903895a510a29762f6f93866797",
+  "driver_services_running": [
+    "btrfs",
+    "WinSpd"
+  ]
 }

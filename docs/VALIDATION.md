@@ -10,7 +10,7 @@ Initial implementation session: 2026-09-11. Status is updated from executed comm
 | Parser ASan fuzz smoke test | 4,634,101 executions / 61 seconds, no failure |
 | Filesystem probe ASan fuzz smoke test | 8,574,563 executions / 61 seconds, no failure |
 | Final filesystem probe ASan rerun | 4,573,468 executions / 31 seconds after additional geometry/flag validation, no failure |
-| Windows MSVC build and tests | Passed on `windows-2025`: vendored OpenSSL, Rust tests, WinSpd bridge, G0 spike and oracle harness |
+| Windows MSVC build and tests | Passed on `windows-2025`: 25 Rust tests, vendored OpenSSL, WinSpd bridge, G0 spike and oracle harness |
 | Windows core differential oracle | Both baseline filesystems passed full 240 MiB plaintext hashes and boundary comparisons |
 | G0-B WinSpd + WinBtrfs | Passed on Windows 11 25H2 26200.6584, Secure Boot off, HVCI/VBS off |
 | LUKS2 Btrfs CLI runtime | Passed console UTF-8 password, publish, all file/copy hashes, mutation rejection, Ctrl+C, device removal and encrypted source hash |
@@ -93,6 +93,12 @@ were observed in G0-E, but no instrumentation above WinSpd's RO rejection was co
 R13 and hidden-write behavior remain unverified. Resuming encrypted ext4 integration
 requires a design decision about discovery followed by a passing G0-E, including that trace.
 
-Machine-readable reports: [G0-B](evidence/g0-btrfs.json) and [G0-E](evidence/g0-ext4.json).
+The final application code at `f79856e` passed [Linux and Windows CI](https://github.com/DPS0340/winluks/actions/runs/34601172950).
+That Windows artifact was hash-verified and rerun in both guests: ext4 returned the gate
+error without a password prompt or device, and Btrfs again passed the mounted-file,
+mutation, console-close, source-hash and device-removal tests.
+
+Machine-readable reports: [G0-B](evidence/g0-btrfs.json), [G0-E](evidence/g0-ext4.json),
+[encrypted Btrfs CLI](evidence/btrfs-cli.json) and [ext4 publication gate](evidence/ext4-publication-gate.json).
 These contain generated-fixture results and the tested environment, without VM credentials
 or captured plaintext. They are runtime observations, not an independent audit attestation.

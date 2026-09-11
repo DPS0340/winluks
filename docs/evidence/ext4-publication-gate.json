@@ -1,0 +1,23 @@
+{
+  "fixture": "ext4-pbkdf2-512-sha256",
+  "binary_sha256": "ad62752d45fcf1db4fbd124cfebaaceb851d23b078d1a605027fd8200b6a87b2",
+  "exit_code": 1,
+  "password_prompted": false,
+  "devices_before": 0,
+  "passed": true,
+  "error": "FS_GATE_UNPASSED",
+  "source_unchanged": true,
+  "devices_after": 0,
+  "date": "2026-09-11",
+  "source_commit": "f79856e62902d1a81b70e9772a6e640f9aceb39b",
+  "build_url": "https://github.com/DPS0340/winluks/actions/runs/34601172950",
+  "environment": {
+    "hypervisor": "QEMU/KVM",
+    "virtual_disks_only": true,
+    "os": "Windows 11 Enterprise Evaluation 25H2 10.0.26200.6584",
+    "secure_boot": false,
+    "hvci_vbs_running": false,
+    "vcpus": 4,
+    "ram_gib": 8
+  }
+}
