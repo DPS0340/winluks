@@ -24,8 +24,11 @@ cargo run -- inspect --image /absolute/path/to/fixture.luks2.img
 It does not print keyslot contents, salts, digests, paths or UUIDs.
 
 Windows integration builds additionally use `--features winspd` and the pinned WinSpd SDK.
-The Windows workflow documents the MSVC build. The matching `winspd_x64.dll` must be
-deployed next to the executable in a trusted directory. Driver installation is separate.
+The Windows workflow documents the MSVC build. The matching `winspd-x64.dll` must be
+deployed next to the executable in a trusted directory. Install Microsoft's current x64
+Visual C++ v14 Redistributable. Driver installation is separate; the bridge checks the
+selected driver's service, explicit RO policy and pinned on-disk binary hash before unlock.
+Reboot after driver installation or policy changes, as directed by the lab setup script.
 
 ```powershell
 .\winluks2-ro.exe open --image D:\fixtures\sample.luks2.img --keyslot 0 --filesystem ext4 --read-only

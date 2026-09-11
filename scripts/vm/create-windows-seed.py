@@ -68,7 +68,7 @@ Copy-Item "$PSScriptRoot\lab.pub" "$env:ProgramData\ssh\administrators_authorize
 icacls "$env:ProgramData\ssh\administrators_authorized_keys" /inheritance:r /grant '*S-1-5-32-544:F' /grant '*S-1-5-18:F'
 Start-Service sshd
 if (!(Get-NetFirewallRule -Name OpenSSH-Server-In-TCP -ErrorAction SilentlyContinue)) {
-  New-NetFirewallRule -Name OpenSSH-Server-In-TCP -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow
+  New-NetFirewallRule -Name OpenSSH-Server-In-TCP -DisplayName 'winluks lab SSH' -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow
 }
 New-Item C:\winluks-lab\ready -ItemType File -Force | Out-Null
 Stop-Transcript

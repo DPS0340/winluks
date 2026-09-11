@@ -1,7 +1,7 @@
 # Virtual lab
 
 Use QEMU/KVM guests with file-backed disks only. Recommended: Linux 4 vCPU / 8 GiB,
-Windows 8 vCPU / 24 GiB. Bind management forwarding to `127.0.0.1`; do not expose
+Windows 4 vCPU / 8 GiB for the tested SATA setup (increase after installation if needed). Bind management forwarding to `127.0.0.1`; do not expose
 guest administration to the LAN. Keep keys, media and disk images outside the repository.
 
 Linux baseline: Debian 13 generic amd64 cloud image, SHA512 verified against Debian's
@@ -35,3 +35,28 @@ the actual VBS/HVCI state inside Windows. Collect logs and image hashes before r
 
 Do not count WinSpd callback counters as evidence of no filesystem mutation requests;
 its miniport may have rejected writes earlier. G0-E requires tracing that earlier boundary.
+
+## Windows setup and normal boots
+
+Create the private seed using `create-windows-seed.py --output PRIVATE_VM_DIR
+--ssh-public-key LAB_PUBLIC_KEY` in a Python environment with `pycdlib`. It creates a random
+local administrator password and an unattended ISO that **erases guest disk 0** during
+installation. Attach it only to a fresh disposable virtual OS disk.
+
+Place `windows.qcow2`, `windows-vars.fd` and `windows-seed.iso` in that private directory.
+Use a Microsoft-enrolled Secure Boot variable store matching the OVMF code and swtpm 2.0.
+The runner needs `qemu-system-x86_64` and `swtpm` (or set `WINLUKS_SWTPM` to its binary).
+
+```sh
+# First installation only; answer the ISO boot prompt on loopback VNC port 5918.
+scripts/vm/run-windows.sh PRIVATE_VM_DIR OVMF_CODE.secboot.fd --install WINDOWS_ISO
+# After shutdown: normal boot omits all setup media.
+scripts/vm/run-windows.sh PRIVATE_VM_DIR OVMF_CODE.secboot.fd
+```
+
+The setup enables public-key OpenSSH on loopback host port 22281. Before installing test
+drivers, shut down and preserve the disk, matching UEFI variables and TPM state as the clean
+baseline. Make a separate disposable copy for each filesystem. Run `prepare-drivers.ps1`
+as administrator in each copy, reboot, then use `test-g0.ps1` with the CI G0 executable and
+a **plaintext** fixture manifest. The report deliberately does not turn uncollected mutation
+tracing into a passed gate. Never initialize or format a RAW disk to make G0 appear to pass.

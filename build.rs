@@ -19,4 +19,5 @@ fn main() {
     );
     println!("cargo:rustc-link-lib=winspd_x64");
     println!("cargo:rustc-link-lib=ole32");
+    println!("cargo:rustc-link-lib=advapi32");
 }

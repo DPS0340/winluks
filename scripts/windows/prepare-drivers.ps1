@@ -9,15 +9,20 @@ $model = (Get-CimInstance Win32_ComputerSystem).Model
 if ($model -notmatch 'QEMU|KVM|Standard PC') { throw 'Use a disposable QEMU/KVM test VM' }
 New-Item -ItemType Directory -Force $LabDirectory | Out-Null
 $packages = @{
+    vcruntime = @('https://aka.ms/vc14/vc_redist.x64.exe','vc_redist.x64.exe','843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c')
     winspd = @('https://github.com/winfsp/winspd/releases/download/v1.0B1/winspd-1.0.20357.msi','winspd.msi','f1157eef805dcbec78a477f2b4ee5abc0049c8a9329444e5d18cab01d3604265')
     btrfs = @('https://github.com/maharmstone/btrfs/releases/download/v1.10/btrfs-1.10.zip','btrfs.zip','82303494b4fd4c23ad7c6fd69a886cb1a317a0293ee6e283b7c009117133b0c3')
     ext4 = @('https://github.com/bobranten/Ext4Fsd/releases/download/v0.71/Ext2Fsd-0.71-setup.exe','ext4fsd.exe','3c127f8e70c6b056a0185850efb71b9c45d2ff493b7df6b7b648eb89ec84214d')
 }
-foreach ($name in @('winspd',$Filesystem)) {
+foreach ($name in @('vcruntime','winspd',$Filesystem)) {
     $pkg = $packages[$name]; $path = Join-Path $LabDirectory $pkg[1]
     if (!(Test-Path $path)) { Invoke-WebRequest $pkg[0] -OutFile $path }
     if ((Get-FileHash $path -Algorithm SHA256).Hash -ne $pkg[2]) { throw "Package hash mismatch: $name" }
 }
+$runtime = Join-Path $LabDirectory 'vc_redist.x64.exe'
+if ((Get-AuthenticodeSignature $runtime).Status -ne 'Valid') { throw 'Microsoft runtime signature is not valid' }
+$proc = Start-Process $runtime -ArgumentList '/install /quiet /norestart' -Wait -PassThru
+if ($proc.ExitCode -notin @(0,3010,1638)) { throw "Visual C++ runtime install error $($proc.ExitCode)" }
 $msi = Join-Path $LabDirectory 'winspd.msi'
 if ((Get-AuthenticodeSignature $msi).Status -ne 'Valid') { throw 'WinSpd MSI signature is not valid' }
 $proc = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart /l*v `"$LabDirectory\winspd-install.log`"" -Wait -PassThru

@@ -42,7 +42,7 @@ jobs:
       - name: Build isolated G0 spike and oracle harness
         shell: pwsh
         run: |
-          cl /nologo /W4 /I "$env:WINSPD_SDK/inc" native/g0.c native/winspd_shim.c /Fe:winluks-g0.exe /link /LIBPATH:"$env:WINSPD_SDK/lib" winspd_x64.lib ole32.lib
+          cl /nologo /W4 /I "$env:WINSPD_SDK/inc" native/g0.c native/winspd_shim.c /Fe:winluks-g0.exe /link /LIBPATH:"$env:WINSPD_SDK/lib" winspd_x64.lib ole32.lib advapi32.lib
           if ($LASTEXITCODE) { throw 'G0 build failed' }
           cargo build --locked --release --example oracle --features vendored-openssl
           if ($LASTEXITCODE) { throw 'oracle build failed' }
@@ -50,7 +50,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory dist | Out-Null
-          Copy-Item target/release/winluks2-ro.exe, "$env:WINSPD_SDK/extracted/winspd_x64.dll", LICENSE dist/
+          Copy-Item target/release/winluks2-ro.exe, LICENSE, docs/THIRD_PARTY.md dist/
+          # MSI stream identifiers use underscores; the PE import name uses a hyphen.
+          Copy-Item "$env:WINSPD_SDK/extracted/winspd_x64.dll" dist/winspd-x64.dll
           Copy-Item winluks-g0.exe, target/release/examples/oracle.exe dist/
           $hashes = Get-ChildItem dist -File | Where-Object Name -ne 'SHA256.txt' | Get-FileHash -Algorithm SHA256
           $hashes | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path $_.Path -Leaf) } | Set-Content dist/SHA256.txt

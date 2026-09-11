@@ -58,6 +58,7 @@ fn run(cli: Cli) -> Result<()> {
             #[cfg(windows)]
             {
                 use std::io::IsTerminal;
+                winluks::adapter::check_consumer(filesystem)?;
                 if !std::io::stdin().is_terminal() {
                     return Err(Error::ConsoleRequired);
                 }

@@ -16,6 +16,44 @@ unsafe extern "C" {
     ) -> u32;
     fn wl_error(session: *mut c_void) -> u32;
     fn wl_close(session: *mut c_void);
+    fn wl_consumer_ready(filesystem: u32, driver: *mut u16, capacity: u32) -> u32;
+}
+pub fn check_consumer(filesystem: crate::probe::Filesystem) -> Result<()> {
+    use crate::probe::Filesystem;
+    use std::os::windows::ffi::OsStringExt;
+    let (id, expected) = match filesystem {
+        Filesystem::Btrfs => (
+            0,
+            "3c46f0f82726e374cec3d2e36defd2c672c68903895a510a29762f6f93866797",
+        ),
+        Filesystem::Ext4 => (
+            1,
+            "06f6b4a6bc7aaf568d0442a3415394b2b7806c1bd94d35b314bebfa0993898d9",
+        ),
+    };
+    let mut path = [0u16; 32768];
+    if unsafe { wl_consumer_ready(id, path.as_mut_ptr(), path.len() as u32) } != 0 {
+        return Err(Error::FsDriverUnavailable);
+    }
+    let n = path
+        .iter()
+        .position(|c| *c == 0)
+        .ok_or(Error::FsDriverUnavailable)?;
+    let path = std::path::PathBuf::from(std::ffi::OsString::from_wide(&path[..n]));
+    let image = crate::image::Image::open(&path).map_err(|_| Error::FsDriverUnavailable)?;
+    if image.is_empty() || image.len() > 16 * 1024 * 1024 {
+        return Err(Error::FsDriverUnavailable);
+    }
+    let mut bytes = vec![0; image.len() as usize];
+    image
+        .read_exact_at(0, &mut bytes)
+        .map_err(|_| Error::FsDriverUnavailable)?;
+    let digest = openssl::sha::sha256(&bytes);
+    let actual: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+    if actual != expected {
+        return Err(Error::FsDriverUnavailable);
+    }
+    Ok(())
 }
 fn code(r: Result<()>) -> i32 {
     match r {
@@ -73,6 +111,7 @@ unsafe extern "C" fn control_cb(p: *mut c_void, op: u32, lba: u64, count: u32) -
     .unwrap_or(4)
 }
 pub fn serve(volume: ValidatedVolume) -> Result<()> {
+    check_consumer(volume.filesystem())?;
     let mut adapter = Box::new(ReadOnlyAdapter::new(volume));
     let quit = Arc::new(AtomicBool::new(false));
     let q = quit.clone();

@@ -4,6 +4,7 @@
 #include <objbase.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <wchar.h>
 
 typedef char assert_params_size[(sizeof(SPD_STORAGE_UNIT_PARAMS) == 128) ? 1 : -1];
 typedef char assert_status_size[(sizeof(SPD_STORAGE_UNIT_STATUS) == 32) ? 1 : -1];
@@ -58,6 +59,46 @@ static BOOLEAN unmap_cb(SPD_STORAGE_UNIT *u, SPD_UNMAP_DESCRIPTOR *d, UINT32 cou
     result(status, 1); return TRUE;
 }
 static const SPD_STORAGE_UNIT_INTERFACE iface = {read_cb, write_cb, flush_cb, unmap_cb, {0}};
+
+/* Read-only preflight: never starts services or changes registry policy. */
+static int running(const wchar_t *name) {
+    SC_HANDLE manager = OpenSCManagerW(0, 0, SC_MANAGER_CONNECT), service;
+    SERVICE_STATUS status;
+    int ok = 0;
+    if (!manager) return 0;
+    service = OpenServiceW(manager, name, SERVICE_QUERY_STATUS);
+    if (service) {
+        ok = QueryServiceStatus(service, &status) && status.dwCurrentState == SERVICE_RUNNING;
+        CloseServiceHandle(service);
+    }
+    CloseServiceHandle(manager);
+    return ok;
+}
+static int setting(const wchar_t *path, const wchar_t *name, DWORD expected) {
+    DWORD value = ~expected, size = sizeof value;
+    return ERROR_SUCCESS == RegGetValueW(HKEY_LOCAL_MACHINE, path, name,
+        RRF_RT_REG_DWORD, 0, &value, &size) && value == expected;
+}
+DWORD wl_consumer_ready(uint32_t filesystem, wchar_t *driver, uint32_t capacity) {
+    const wchar_t *path, *file;
+    UINT n;
+    if (!driver || capacity < MAX_PATH) return ERROR_INVALID_PARAMETER;
+    if (filesystem == 0) {
+        path = L"SYSTEM\\CurrentControlSet\\Services\\btrfs";
+        file = L"\\drivers\\btrfs.sys";
+        if (!running(L"btrfs") || !setting(path, L"Readonly", 1)) return ERROR_NOT_READY;
+    } else if (filesystem == 1) {
+        path = L"SYSTEM\\CurrentControlSet\\Services\\Ext2Fsd\\Parameters";
+        file = L"\\drivers\\Ext2Fsd.sys";
+        if (!running(L"Ext2Fsd") || !setting(path, L"WritingSupport", 0) ||
+            !setting(path, L"Ext3ForceWriting", 0) || !setting(path, L"Readonly", 1))
+            return ERROR_NOT_READY;
+    } else return ERROR_INVALID_PARAMETER;
+    n = GetSystemDirectoryW(driver, capacity);
+    if (!n || n + wcslen(file) >= capacity) return ERROR_INSUFFICIENT_BUFFER;
+    wcscat_s(driver, capacity, file);
+    return ERROR_SUCCESS;
+}
 
 DWORD wl_create(void *context, WL_READ read, WL_CONTROL control, uint64_t blocks, WL_SESSION **out) {
     SPD_STORAGE_UNIT_PARAMS p = {0};

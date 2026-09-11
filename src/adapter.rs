@@ -70,7 +70,11 @@ impl ReadOnlyAdapter {
 #[cfg(all(windows, feature = "winspd"))]
 mod windows;
 #[cfg(all(windows, feature = "winspd"))]
-pub use windows::serve;
+pub use windows::{check_consumer, serve};
+#[cfg(not(all(windows, feature = "winspd")))]
+pub fn check_consumer(_filesystem: crate::probe::Filesystem) -> Result<()> {
+    Err(Error::FsDriverUnavailable)
+}
 #[cfg(not(all(windows, feature = "winspd")))]
 pub fn serve(_volume: ValidatedVolume) -> Result<()> {
     Err(Error::FsDriverUnavailable)
