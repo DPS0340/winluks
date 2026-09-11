@@ -70,10 +70,21 @@ impl ReadOnlyAdapter {
 #[cfg(all(windows, feature = "winspd"))]
 mod windows;
 #[cfg(all(windows, feature = "winspd"))]
-pub use windows::{check_consumer, serve};
-#[cfg(not(all(windows, feature = "winspd")))]
-pub fn check_consumer(_filesystem: crate::probe::Filesystem) -> Result<()> {
-    Err(Error::FsDriverUnavailable)
+pub use windows::serve;
+pub fn check_consumer(filesystem: crate::probe::Filesystem) -> Result<()> {
+    // G0-E failed discovery on the design's partitionless disk. Keep the crypto/probe
+    // available to independent oracles, but never publish this unpassed consumer.
+    if filesystem == crate::probe::Filesystem::Ext4 {
+        return Err(Error::FsGateUnpassed);
+    }
+    #[cfg(all(windows, feature = "winspd"))]
+    {
+        windows::check_consumer(filesystem)
+    }
+    #[cfg(not(all(windows, feature = "winspd")))]
+    {
+        Err(Error::FsDriverUnavailable)
+    }
 }
 #[cfg(not(all(windows, feature = "winspd")))]
 pub fn serve(_volume: ValidatedVolume) -> Result<()> {

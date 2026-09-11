@@ -6,6 +6,11 @@ The independent Rust core decrypts a restricted LUKS2 profile. A small C adapter
 the plaintext through WinSpd. Existing WinBtrfs and Ext4Fsd drivers are separate filesystem
 consumers; neither is modified. This is a development repository, **not a validated recovery tool**.
 
+**Runtime status:** Btrfs passed virtual-image mount/copy/RO/close tests on the recorded
+Windows 11 profile with Secure Boot and HVCI off. Ext4 decrypt/probe tests pass, but the
+pinned driver did not discover the selected partitionless G0 disk. Encrypted ext4 publication
+is blocked with `FS_GATE_UNPASSED`. Full v0.2 acceptance and independent review are incomplete.
+
 - [Implementation plan (한국어)](docs/PLAN.md)
 - [Original design v0.2.0 (한국어)](docs/design-v0.2.0.ko.md)
 - [Validation status](docs/VALIDATION.md)
@@ -31,7 +36,7 @@ selected driver's service, explicit RO policy and pinned on-disk binary hash bef
 Reboot after driver installation or policy changes, as directed by the lab setup script.
 
 ```powershell
-.\winluks2-ro.exe open --image D:\fixtures\sample.luks2.img --keyslot 0 --filesystem ext4 --read-only
+.\winluks2-ro.exe open --image D:\fixtures\sample.luks2.img --keyslot 0 --filesystem btrfs --read-only
 ```
 
 The password is read from a local console with echo disabled. The device is published only

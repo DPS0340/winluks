@@ -18,7 +18,7 @@ unsafe extern "C" {
     fn wl_close(session: *mut c_void);
     fn wl_consumer_ready(filesystem: u32, driver: *mut u16, capacity: u32) -> u32;
 }
-pub fn check_consumer(filesystem: crate::probe::Filesystem) -> Result<()> {
+pub(super) fn check_consumer(filesystem: crate::probe::Filesystem) -> Result<()> {
     use crate::probe::Filesystem;
     use std::os::windows::ffi::OsStringExt;
     let (id, expected) = match filesystem {
@@ -111,7 +111,7 @@ unsafe extern "C" fn control_cb(p: *mut c_void, op: u32, lba: u64, count: u32) -
     .unwrap_or(4)
 }
 pub fn serve(volume: ValidatedVolume) -> Result<()> {
-    check_consumer(volume.filesystem())?;
+    super::check_consumer(volume.filesystem())?;
     let mut adapter = Box::new(ReadOnlyAdapter::new(volume));
     let quit = Arc::new(AtomicBool::new(false));
     let q = quit.clone();

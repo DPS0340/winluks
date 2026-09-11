@@ -1,0 +1,47 @@
+{
+  "date": "2026-09-11",
+  "environment": {
+    "hypervisor": "QEMU/KVM",
+    "virtual_disks_only": true,
+    "os": "Windows 11 Enterprise Evaluation 25H2 10.0.26200.6584",
+    "secure_boot": false,
+    "hvci_vbs_running": false,
+    "vcpus": 4,
+    "ram_gib": 8
+  },
+  "report": {
+    "fixture": "btrfs-pbkdf2-512-sha256",
+    "gate_passed": true,
+    "disk": {
+      "Number": 1,
+      "FriendlyName": "WinSpd winluks RO",
+      "IsReadOnly": true,
+      "PartitionStyle": "RAW",
+      "OperationalStatus": "Online"
+    },
+    "secure_boot": false,
+    "file_hashes_match": true,
+    "exit_code": 0,
+    "published": true,
+    "volume_read_only": true,
+    "device_removed": true,
+    "mutation_tests_passed": true,
+    "mutation_trace": "not_collected",
+    "source_unchanged": true,
+    "os": "10.0.26200"
+  },
+  "mounted": {
+    "passed": true,
+    "disk_read_only": true,
+    "mutation_errors": {
+      "delete": -2147024877,
+      "create": -2146233087,
+      "raw_write": 1117,
+      "rename": -2147024877
+    },
+    "fixture": "btrfs-pbkdf2-512-sha256",
+    "volume_read_only": true,
+    "file_hashes_match": true
+  },
+  "interpretation": "G0-B passed in this profile; full G2 failure matrix remains incomplete."
+}

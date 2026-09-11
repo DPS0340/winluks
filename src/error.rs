@@ -29,6 +29,8 @@ pub enum Error {
     FsUnsupportedFeature,
     #[error("FS_DRIVER_UNAVAILABLE")]
     FsDriverUnavailable,
+    #[error("FS_GATE_UNPASSED")]
+    FsGateUnpassed,
     #[error("DEVICE_PUBLISH_FAILED")]
     DevicePublishFailed,
     #[error("READ_ONLY")]

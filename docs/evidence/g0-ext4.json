@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-11",
+  "environment": {
+    "hypervisor": "QEMU/KVM",
+    "virtual_disks_only": true,
+    "os": "Windows 11 Enterprise Evaluation 25H2 10.0.26200.6584",
+    "secure_boot": false,
+    "hvci_vbs_running": false,
+    "vcpus": 4,
+    "ram_gib": 8
+  },
+  "report": {
+    "fixture": "ext4-pbkdf2-512-sha256",
+    "gate_passed": false,
+    "disk": {
+      "Number": 1,
+      "FriendlyName": "WinSpd winluks RO",
+      "IsReadOnly": true,
+      "PartitionStyle": "RAW",
+      "OperationalStatus": "Online"
+    },
+    "exit_code": 0,
+    "file_hashes_match": false,
+    "published": true,
+    "device_removed": true,
+    "mutation_trace": "not_collected",
+    "source_unchanged": true
+  },
+  "interpretation": "G0-E No-Go: running pinned driver did not expose a filesystem volume on the partitionless disk. Mutation tracing was not collected."
+}

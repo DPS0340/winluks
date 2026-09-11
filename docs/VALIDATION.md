@@ -6,7 +6,7 @@ Initial implementation session: 2026-09-11. Status is updated from executed comm
 |---|---|
 | Linux `cargo check` | Passed on Rust 1.98.1, OpenSSL 3.6.4 |
 | cryptsetup differential fixtures | 30/30: 24 KDF/key/hash/filesystem combinations, 4 mixed volume/keyslot key-size cases, 2 distinct-password slot-1 cases with independent AF/digest hashes |
-| Linux regression tests | 24 tests passed: bounded JSON, backend, metadata, filesystem policies |
+| Linux regression tests | 25 tests passed: bounded JSON, backend, metadata, filesystem policies and the ext4 publication gate |
 | Parser ASan fuzz smoke test | 4,634,101 executions / 61 seconds, no failure |
 | Filesystem probe ASan fuzz smoke test | 8,574,563 executions / 61 seconds, no failure |
 | Final filesystem probe ASan rerun | 4,573,468 executions / 31 seconds after additional geometry/flag validation, no failure |
@@ -14,7 +14,7 @@ Initial implementation session: 2026-09-11. Status is updated from executed comm
 | Windows core differential oracle | Both baseline filesystems passed full 240 MiB plaintext hashes and boundary comparisons |
 | G0-B WinSpd + WinBtrfs | Passed on Windows 11 25H2 26200.6584, Secure Boot off, HVCI/VBS off |
 | LUKS2 Btrfs CLI runtime | Passed console UTF-8 password, publish, all file/copy hashes, mutation rejection, Ctrl+C, device removal and encrypted source hash |
-| G0-E WinSpd + Ext4Fsd | Pending |
+| G0-E WinSpd + Ext4Fsd | No-Go: running pinned driver did not expose a filesystem volume on the partitionless disk; encrypted publication is blocked |
 | Driver-boundary mutation tracing | Pending |
 | Full R01–R14 matrix, fuzzing and independent review | Pending |
 
@@ -76,3 +76,23 @@ passed the same mounted-file/mutation tests, and closed through Ctrl+C with exit
 encrypted source hash was unchanged and the device was removed. A scan of captured console
 output found no synthetic password. These results cover the tested happy path and mutation
 attempts, not the complete G2 failure/lifecycle matrix.
+
+In a separate clean Ext4Fsd guest with Secure Boot/HVCI off, the pinned 0.71 installer
+omitted the catalog referenced by its INF and did not register the filesystem driver.
+The setup script now verifies the unchanged Microsoft-signed driver, installs its service,
+applies the RO policy and requires a reboot. Both Ext2Fsd and WinSpd were running during
+the valid G0-E test. The read-only partitionless RAW disk appeared, but no filesystem
+volume or drive path appeared, including a separate discovery check. The process exited 0,
+the device disappeared and the complete source hash stayed unchanged. That is a discovery
+failure, not a passing read-only mount. No automatic GPT wrapper or driver patch was added.
+
+Ext4 therefore returns `FS_GATE_UNPASSED` before password input/device creation in the
+Windows CLI, and the publication entry point repeats the gate check. Its independent
+decrypt/probe oracle remains available. Three read callbacks and zero Write/Unmap callbacks
+were observed in G0-E, but no instrumentation above WinSpd's RO rejection was collected;
+R13 and hidden-write behavior remain unverified. Resuming encrypted ext4 integration
+requires a design decision about discovery followed by a passing G0-E, including that trace.
+
+Machine-readable reports: [G0-B](evidence/g0-btrfs.json) and [G0-E](evidence/g0-ext4.json).
+These contain generated-fixture results and the tested environment, without VM credentials
+or captured plaintext. They are runtime observations, not an independent audit attestation.
