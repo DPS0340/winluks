@@ -73,7 +73,9 @@ pub fn ext4(s: &[u8], length: u64) -> Result<()> {
     }
     let high = u32le(s, 0x150) as u64;
     let has64 = incompat & 0x80 != 0;
-    if (has64 && u16le(s, 0xfe) != 64) || (!has64 && high != 0) {
+    if (has64 && u16le(s, 0xfe) != 64)
+        || (!has64 && (high != 0 || u32le(s, 0x154) != 0 || u32le(s, 0x158) != 0))
+    {
         return Err(Error::FsInvalid);
     }
     let blocks = u32le(s, 4) as u64 | if has64 { high << 32 } else { 0 };
@@ -93,10 +95,14 @@ pub fn ext4(s: &[u8], length: u64) -> Result<()> {
         return Err(Error::FsInvalid);
     }
     let groups = blocks.div_ceil(bpg);
+    if (ipg * 256).div_ceil(4096) + 2 > bpg {
+        return Err(Error::FsInvalid);
+    }
     if inodes == 0
         || inodes != groups.checked_mul(ipg).ok_or(Error::FsInvalid)?
         || u32le(s, 0xe0) as u64 > inodes
         || u32le(s, 0x54) < 11
+        || u32le(s, 0x54) as u64 > inodes
     {
         return Err(Error::FsInvalid);
     }
@@ -110,6 +116,15 @@ pub fn ext4(s: &[u8], length: u64) -> Result<()> {
             0
         };
     if free > blocks {
+        return Err(Error::FsInvalid);
+    }
+    let reserved = u32le(s, 8) as u64
+        | if has64 {
+            (u32le(s, 0x154) as u64) << 32
+        } else {
+            0
+        };
+    if reserved > blocks {
         return Err(Error::FsInvalid);
     }
     Ok(())
@@ -141,6 +156,14 @@ pub fn btrfs(s: &[u8], length: u64) -> Result<()> {
     if u64le(s, 0x60) != 0 {
         return Err(Error::FsRecoveryRequired);
     }
+    let flags = u64le(s, 0x38);
+    if flags & 4 != 0 {
+        return Err(Error::FsRecoveryRequired);
+    }
+    // Changing UUID/checksum/tree, seeding and metadump modes require other policies.
+    if flags & !1 != 0 {
+        return Err(Error::FsUnsupportedFeature);
+    }
     // MIXED_BACKREF, DEFAULT_SUBVOL, COMPRESS_LZO, BIG_METADATA, EXTENDED_IREF,
     // SKINNY_METADATA, NO_HOLES, COMPRESS_ZSTD. No mixed groups, RAID or zoned mode.
     const ALLOWED: u64 = 1 | 2 | 8 | 16 | 32 | 64 | 256 | 512;
@@ -150,6 +173,13 @@ pub fn btrfs(s: &[u8], length: u64) -> Result<()> {
     let node = u32le(s, 0x94);
     if u32le(s, 0x90) != 4096 || ![4096, 8192, 16384, 32768, 65536].contains(&node) {
         return Err(Error::FsUnsupportedFeature);
+    }
+    for offset in [0x50, 0x58] {
+        let root = u64le(s, offset);
+        // These are logical Btrfs addresses, not physical device byte offsets.
+        if root == 0 || !root.is_multiple_of(4096) {
+            return Err(Error::FsInvalid);
+        }
     }
     if u32le(s, 0xa0) > 2048 || s[0xc6] > 8 || s[0xc7] > 8 || s[0xc8] > 8 {
         return Err(Error::FsInvalid);

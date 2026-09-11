@@ -31,6 +31,10 @@ unsafe extern "C" fn read_cb(p: *mut c_void, lba: u64, count: u32, buffer: *mut 
         if p.is_null() || count > 2048 || (count != 0 && buffer.is_null()) {
             return 2;
         }
+        // Clear before calling Rust, so even a caught panic cannot expose stale plaintext.
+        if count != 0 {
+            unsafe { ptr::write_bytes(buffer.cast::<u8>(), 0, count as usize * 512) };
+        }
         let a = unsafe { &*p.cast::<ReadOnlyAdapter>() };
         match a.read(lba, count) {
             Ok(data) => {

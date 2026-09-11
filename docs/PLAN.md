@@ -25,10 +25,10 @@ Rust의 공통 복호화 코어, 최소 WinSpd C shim, 기존 WinBtrfs/Ext4Fsd �
 
 | 단계 | 작업 | 통과 조건 | 상태 |
 |---|---|---|---|
-| 준비 | 저장소, 빌드, 원본 설계, VM과 결과 경로 | 재현 가능한 명령과 버전 기록 | 진행 중 |
+| 준비 | 저장소, 빌드, 원본 설계, VM과 결과 경로 | 재현 가능한 명령과 버전 기록 | 공개 저장소 게시, Linux VM 실행; Windows 준비 중 |
 | G0-B | 평문 Btrfs → WinSpd → WinBtrfs | 발견·RO 마운트·파일 해시·종료 | 미실행 |
 | G0-E | 평문 E0 ext4 → WinSpd → Ext4Fsd | G0-B 항목 + RO 차단 전 mutation 관찰 | 미실행 |
-| G1 | 이중 헤더/JSON, KDF, AF, digest, XTS, fs-probe | Linux oracle 일치, 음성 시험, fuzzing | 미실행 |
+| G1 | 이중 헤더/JSON, KDF, AF, digest, XTS, fs-probe | Linux oracle 일치, 음성 시험, fuzzing | 코어 구현; 28 fixture 비교·24 회귀 시험·짧은 ASan fuzz 통과, 전체 리뷰 미완료 |
 | G2-B | LUKS2 Btrfs 통합 | R01–R10의 해당 항목 | 미실행 |
 | G2-E | LUKS2 ext4 통합 | 공통 항목 및 R11–R14 | 미실행 |
 | G3 | 사용자 볼륨 호환성 | 별도 허가 후 복제 이미지 검사 | 이번 가상 fixture 작업 밖 |

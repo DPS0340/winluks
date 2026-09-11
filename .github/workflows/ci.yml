@@ -28,6 +28,7 @@ jobs:
           $sdk = Join-Path $env:RUNNER_TEMP 'winspd-sdk'
           New-Item -ItemType Directory -Force "$sdk/inc/winspd", "$sdk/lib", "$sdk/extracted" | Out-Null
           Invoke-WebRequest https://github.com/winfsp/winspd/releases/download/v1.0B1/winspd-1.0.20357.msi -OutFile "$sdk/winspd.msi"
+          if ((Get-FileHash "$sdk/winspd.msi" -Algorithm SHA256).Hash -ne 'F1157EEF805DCBEC78A477F2B4EE5ABC0049C8A9329444E5D18CAB01D3604265') { throw 'WinSpd package hash mismatch' }
           & 'C:/Program Files/7-Zip/7z.exe' e "$sdk/winspd.msi" "-o$sdk/extracted" -y | Out-Null
           if ($LASTEXITCODE) { throw 'MSI extraction failed' }
           Copy-Item "$sdk/extracted/winspd_x64.lib" "$sdk/lib/"
@@ -51,7 +52,8 @@ jobs:
           New-Item -ItemType Directory dist | Out-Null
           Copy-Item target/release/winluks2-ro.exe, "$env:WINSPD_SDK/extracted/winspd_x64.dll", LICENSE dist/
           Copy-Item winluks-g0.exe, target/release/examples/oracle.exe dist/
-          Get-ChildItem dist | Get-FileHash -Algorithm SHA256 | Format-Table | Out-File dist/SHA256.txt
+          $hashes = Get-ChildItem dist -File | Where-Object Name -ne 'SHA256.txt' | Get-FileHash -Algorithm SHA256
+          $hashes | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path $_.Path -Leaf) } | Set-Content dist/SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: winluks-windows-x64-experimental

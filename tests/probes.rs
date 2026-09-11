@@ -89,6 +89,8 @@ fn wrong_types_and_truncation() {
 }
 #[test]
 fn btrfs_policy() {
+    let b = btr_change(|b| b[0x38] |= 4);
+    assert_eq!(probe::btrfs(&b, LEN), Err(Error::FsRecoveryRequired));
     let b = btr_change(|b| b[0x88] = 2);
     assert_eq!(probe::btrfs(&b, LEN), Err(Error::FsUnsupportedFeature));
     let b = btr_change(|b| b[0x60] = 1);
