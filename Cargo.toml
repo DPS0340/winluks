@@ -1,0 +1,51 @@
+[package]
+name = "winluks"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.89"
+license = "GPL-3.0-or-later"
+description = "Experimental read-only LUKS2 image bridge for Windows"
+repository = "https://github.com/DPS0340/winluks"
+
+[features]
+default = []
+vendored-openssl = ["openssl/vendored"]
+winspd = []
+
+[dependencies]
+argon2 = { version = "0.5", features = ["zeroize"] }
+base64 = "0.22"
+clap = { version = "4.5", features = ["derive"] }
+crc32c = "0.6"
+ctrlc = "3.4"
+openssl = "0.10"
+rpassword = "7.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+subtle = "2.6"
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+zeroize = { version = "1.8", features = ["derive"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Memory", "Win32_System_Console"] }
+
+[build-dependencies]
+cc = "1.2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[[bin]]
+name = "winluks2-ro"
+path = "src/main.rs"
+
+[profile.release]
+lto = "thin"
+overflow-checks = true
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"

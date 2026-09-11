@@ -1,0 +1,47 @@
+name: build-and-test
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Prepare pinned WinSpd SDK
+        shell: pwsh
+        run: |
+          $sdk = Join-Path $env:RUNNER_TEMP 'winspd-sdk'
+          New-Item -ItemType Directory -Force "$sdk/inc/winspd", "$sdk/lib", "$sdk/extracted" | Out-Null
+          Invoke-WebRequest https://github.com/winfsp/winspd/releases/download/v1.0B1/winspd-1.0.20357.msi -OutFile "$sdk/winspd.msi"
+          & 'C:/Program Files/7-Zip/7z.exe' e "$sdk/winspd.msi" "-o$sdk/extracted" -y | Out-Null
+          if ($LASTEXITCODE) { throw 'MSI extraction failed' }
+          Copy-Item "$sdk/extracted/winspd_x64.lib" "$sdk/lib/"
+          foreach ($name in @('winspd.h','ioctl.h')) {
+            Invoke-WebRequest "https://raw.githubusercontent.com/winfsp/winspd/55c53bc454afbbba38bd1692f52beb77ed59142f/inc/winspd/$name" -OutFile "$sdk/inc/winspd/$name"
+          }
+          "WINSPD_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "$sdk/extracted" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - run: cargo test --locked --features vendored-openssl
+      - run: cargo build --locked --release --features winspd,vendored-openssl
+      - name: Package test build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory dist | Out-Null
+          Copy-Item target/release/winluks2-ro.exe, "$env:WINSPD_SDK/extracted/winspd_x64.dll", LICENSE dist/
+          Get-ChildItem dist | Get-FileHash -Algorithm SHA256 | Format-Table | Out-File dist/SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winluks-windows-x64-experimental
+          path: dist/

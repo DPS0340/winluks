@@ -1,0 +1,56 @@
+# winluks 구현 계획
+
+기준: [Windows LUKS2 Read-only Bridge 설계 v0.2.0](design-v0.2.0.ko.md).
+원본 설계의 당시 작업 범위와 승인 문구는 기록이다. 현재 작업은 사용자가 요청한 구현,
+가상 볼륨 기반 시험 환경, DPS0340/winluks 공개 저장소 게시를 포함한다.
+
+## 목표와 경계
+
+Windows 11 x64에서 로컬 LUKS2 파티션 이미지의 파일을 읽고 별도 저장장치로 복사한다.
+Rust의 공통 복호화 코어, 최소 WinSpd C shim, 기존 WinBtrfs/Ext4Fsd 드라이버를 사용한다.
+실제 장치, RW, 자동 복구, 4096바이트 암호화 섹터는 구현하지 않는다.
+이미지·VM·개발용 자격증명·덤프는 Git에 올리지 않는다.
+
+## 개발 환경
+
+- Linux 호스트: 편집, Git, Rust 단위 시험, fuzzing, VM 자동화.
+- Linux VM: 고정 Debian 이미지, cryptsetup/btrfs-progs/e2fsprogs로 fixture와 독립 oracle 생성.
+- Windows VM: 로컬 NTFS의 이미지, MSVC 빌드, WinSpd와 파일시스템 드라이버 시험.
+- Windows 기본 이미지에서 Btrfs/ext4 시험 환경을 각각 복제하고 간섭 시험은 나중에 진행한다.
+- 모든 저장장치는 가상 파일이다. 공유 경로는 전달에만 사용하고 fixture는 로컬로 복사한다.
+- 동시 writable disk 공유는 하지 않는다. 정상 언마운트 후 동결한 동일 바이트를 비교한다.
+- VM 복원 전 게스트 내부 fixture 해시와 요청 계측을 수집한다. base qcow2 해시만으로 RO를 판단하지 않는다.
+
+## 구현 순서와 완료 증거
+
+| 단계 | 작업 | 통과 조건 | 상태 |
+|---|---|---|---|
+| 준비 | 저장소, 빌드, 원본 설계, VM과 결과 경로 | 재현 가능한 명령과 버전 기록 | 진행 중 |
+| G0-B | 평문 Btrfs → WinSpd → WinBtrfs | 발견·RO 마운트·파일 해시·종료 | 미실행 |
+| G0-E | 평문 E0 ext4 → WinSpd → Ext4Fsd | G0-B 항목 + RO 차단 전 mutation 관찰 | 미실행 |
+| G1 | 이중 헤더/JSON, KDF, AF, digest, XTS, fs-probe | Linux oracle 일치, 음성 시험, fuzzing | 미실행 |
+| G2-B | LUKS2 Btrfs 통합 | R01–R10의 해당 항목 | 미실행 |
+| G2-E | LUKS2 ext4 통합 | 공통 항목 및 R11–R14 | 미실행 |
+| G3 | 사용자 볼륨 호환성 | 별도 허가 후 복제 이미지 검사 | 이번 가상 fixture 작업 밖 |
+| G4 | 실험판 배포 | 독립 리뷰, 게이트, SBOM, 라이선스, 실행 증거 | 미실행 |
+
+G0 실패는 해당 파일시스템의 통합을 중단하는 근거다. 독립 코어 구현과 fixture 개발은
+계속할 수 있지만, 성공하지 않은 드라이버 조합을 지원 완료로 표시하지 않는다.
+
+## 모듈과 검증 항목
+
+1. `image`: 일반 파일의 단일 읽기 핸들, 크기 고정, 장치/원격/reparse 거부, 범위 검사.
+2. `metadata`: 두 헤더 checksum/seqid/UUID/의미 비교, 중복 JSON 키, overflow, 영역 overlap.
+3. `crypto`: OpenSSL AES-XTS/PBKDF2/SHA, RustCrypto Argon2, AF merge, 상수 시간 digest 비교.
+4. `volume`: 512바이트 단위 IV, 정렬·경계·short read, 세션 키 제거.
+5. `probe`: Btrfs 단일 장치/feature 정책 및 ext4 E0/checksum/clean/journal/orphan 검사.
+6. `adapter`: WinSpd RO geometry, 동기 완료, Write/Unmap 거부, panic 격리, shutdown/drain.
+7. `cli`: inspect/open, 비표시 콘솔 입력, filesystem 명시, 비밀 없는 오류/상태.
+8. 시험: cryptsetup fixture, 독립 평문·파일 hash, 의미 검증용 재체크섬 변조, G0/E2E PowerShell.
+
+## 결과 기록 원칙
+
+실제 명령·OS build·도구 버전·바이너리 hash와 결과를 `docs/VALIDATION.md`에 기록한다.
+구현됨, 컴파일됨, 단위 시험 통과, Windows 실측 통과, 독립 감사 완료를 구분한다.
+Windows callback 0회는 ext4 hidden write 0회의 증거가 아니다. 필요한 상위 경계 추적을
+실행하지 못했다면 G0-E/R13은 미통과로 남긴다.
