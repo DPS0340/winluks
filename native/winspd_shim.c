@@ -145,29 +145,22 @@ DWORD wl_error(WL_SESSION *s) {
     SpdStorageUnitGetDispatcherError(s->unit, &error); return error;
 }
 
-/* Never lock/dismount by drive letter alone. Bind the volume extent to the exact
- * random SCSI serial created for this session. Other volumes receive queries only. */
+/* Never lock/dismount by drive letter alone. WinBtrfs forwards the storage query to
+ * its backing disk, including for partitionless volumes without disk-extents IOCTL.
+ * Match the exact random SCSI serial created for this session. Queries cannot write. */
 static int belongs_to_session(WL_SESSION *s, HANDLE volume) {
-    VOLUME_DISK_EXTENTS ext;
     STORAGE_PROPERTY_QUERY query = {StorageDeviceProperty, PropertyStandardQuery, {0}};
     BYTE descriptor[4096];
     STORAGE_DEVICE_DESCRIPTOR *d = (void *)descriptor;
-    wchar_t path[64];
     DWORD n;
-    HANDLE disk;
     int match = 0;
-    if (!DeviceIoControl(volume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, 0, 0, &ext, sizeof ext, &n, 0)
-        || n < sizeof ext || ext.NumberOfDiskExtents != 1) return 0;
-    swprintf_s(path, 64, L"\\\\.\\PhysicalDrive%lu", ext.Extents[0].DiskNumber);
-    disk = CreateFileW(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
-    if (disk == INVALID_HANDLE_VALUE) return 0;
     memset(descriptor, 0, sizeof descriptor);
-    if (DeviceIoControl(disk, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof query,
+    if (DeviceIoControl(volume, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof query,
         descriptor, sizeof descriptor, &n, 0) && n >= sizeof *d && d->SerialNumberOffset &&
         d->SerialNumberOffset < n && n - d->SerialNumberOffset > 36) {
-        match = !_strnicmp((char *)descriptor + d->SerialNumberOffset, s->serial, 36);
+        match = !_strnicmp((char *)descriptor + d->SerialNumberOffset, s->serial, 36) &&
+            descriptor[d->SerialNumberOffset + 36] == 0;
     }
-    CloseHandle(disk);
     return match;
 }
 static DWORD find_volume(WL_SESSION *s, HANDLE *out, wchar_t root[64], DWORD access) {
