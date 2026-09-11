@@ -197,6 +197,16 @@ fn header(image: &Image, offset: u64) -> Result<Header> {
     })
 }
 impl Metadata {
+    /// Parser-only fuzz entry point. Never derives keys or publishes devices.
+    #[cfg(feature = "fuzzing")]
+    pub fn fuzz_json(bytes: &[u8]) {
+        if bytes.len() > 4 * 1024 * 1024 {
+            return;
+        }
+        if let Ok(v) = strict_json::parse(bytes) {
+            let _ = Self::from_json(&v, 16384, 256 * 1024 * 1024);
+        }
+    }
     pub fn read(image: &Image) -> Result<Self> {
         let a = header(image, 0)?;
         let b = header(image, a.size)?;

@@ -1,7 +1,4 @@
-use crate::{
-    Error, Result,
-    volume::{ValidatedVolume, checked_range},
-};
+use crate::{Error, Result, volume::ValidatedVolume};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use zeroize::Zeroizing;
 
@@ -59,13 +56,12 @@ impl ReadOnlyAdapter {
             }
             return Err(Error::InvalidRange);
         }
-        checked_range(
-            self.len(),
-            o,
-            (count as usize)
-                .checked_mul(512)
-                .ok_or(Error::InvalidRange)?,
-        )
+        let n = u64::from(count) * 512;
+        if o > self.len() || n > self.len() - o {
+            Err(Error::InvalidRange)
+        } else {
+            Ok(())
+        }
     }
     pub fn stop(&self) {
         self.stopping.store(true, Ordering::Release);

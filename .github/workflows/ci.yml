@@ -19,6 +19,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: ilammy/msvc-dev-cmd@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - name: Prepare pinned WinSpd SDK
         shell: pwsh
         run: |
@@ -33,13 +36,21 @@ jobs:
           }
           "WINSPD_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append
           "$sdk/extracted" | Out-File -FilePath $env:GITHUB_PATH -Append
-      - run: cargo test --locked --features vendored-openssl
+      - run: cargo test --locked --release --features vendored-openssl
       - run: cargo build --locked --release --features winspd,vendored-openssl
+      - name: Build isolated G0 spike and oracle harness
+        shell: pwsh
+        run: |
+          cl /nologo /W4 /I "$env:WINSPD_SDK/inc" native/g0.c native/winspd_shim.c /Fe:winluks-g0.exe /link /LIBPATH:"$env:WINSPD_SDK/lib" winspd_x64.lib ole32.lib
+          if ($LASTEXITCODE) { throw 'G0 build failed' }
+          cargo build --locked --release --example oracle --features vendored-openssl
+          if ($LASTEXITCODE) { throw 'oracle build failed' }
       - name: Package test build
         shell: pwsh
         run: |
           New-Item -ItemType Directory dist | Out-Null
           Copy-Item target/release/winluks2-ro.exe, "$env:WINSPD_SDK/extracted/winspd_x64.dll", LICENSE dist/
+          Copy-Item winluks-g0.exe, target/release/examples/oracle.exe dist/
           Get-ChildItem dist | Get-FileHash -Algorithm SHA256 | Format-Table | Out-File dist/SHA256.txt
       - uses: actions/upload-artifact@v4
         with:

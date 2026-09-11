@@ -96,7 +96,9 @@ impl Image {
                 return Err(Error::UnsupportedProfile);
             }
             let root = [name[4], b':' as u16, b'\\' as u16, 0];
-            if unsafe { GetDriveTypeW(root.as_ptr()) } != DRIVE_FIXED {
+            if unsafe { GetDriveTypeW(root.as_ptr()) }
+                != windows_sys::Win32::System::WindowsProgramming::DRIVE_FIXED
+            {
                 return Err(Error::UnsupportedProfile);
             }
         }

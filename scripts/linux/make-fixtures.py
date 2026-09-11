@@ -25,8 +25,8 @@ def sha(path):
         return hashlib.file_digest(f, 'sha256').hexdigest()
 
 
-def fixture(root, fs, kdf, bits, hash_name):
-    name = f'{fs}-{kdf}-{bits}-{hash_name}'
+def fixture(root, fs, kdf, bits, hash_name, slot_bits=None):
+    name = f'{fs}-{kdf}-{bits}-{hash_name}' + (f'-slot{slot_bits}' if slot_bits else '')
     dest = root / name
     dest.mkdir(mode=0o700)
     image, key, plain = dest/'volume.img', dest/'password.key', dest/'plaintext.raw'
@@ -41,6 +41,8 @@ def fixture(root, fs, kdf, bits, hash_name):
         args += ['--pbkdf-force-iterations', '1000']
     else:
         args += ['--pbkdf-force-iterations', '4', '--pbkdf-memory', '32768', '--pbkdf-parallel', '1']
+    if slot_bits:
+        args += ['--keyslot-key-size', str(slot_bits), '--keyslot-cipher', 'aes-xts-plain64']
     run(args + [str(image)])
     name_map = 'winluks-fixture-' + secrets.token_hex(6)
     mapped = Path('/dev/mapper') / name_map
@@ -96,7 +98,7 @@ def fixture(root, fs, kdf, bits, hash_name):
                             image='volume.img',password_file='password.key',plaintext='plaintext.raw',
                             image_sha256=before,plaintext_sha256=sha(plain),plaintext_bytes=plain.stat().st_size,
                             files=files,kernel=platform.release(),cryptsetup=run(['cryptsetup','--version']).decode().strip(),
-                            creation_args=args[:-2]+['--key-file','<synthetic-password-file>','<virtual-image>'],
+                            creation_args=[('<synthetic-password-file>' if x==str(key) else x) for x in args]+['<virtual-image>'],
                             mkfs_args=mkfs[:-1]+['<virtual-mapping>'],oracle_mount_options=opts)
             (dest/'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+'\n')
             print(f'{name}: image, plaintext and file oracle verified', flush=True)
@@ -111,6 +113,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--matrix', action='store_true')
+    ap.add_argument('--cross-key-sizes', action='store_true')
     args = ap.parse_args()
     if os.geteuid() != 0:
         ap.error('run as root inside a disposable Linux VM')
@@ -123,6 +126,10 @@ def main():
         combos = [(k,b,h) for k in ['pbkdf2','argon2i','argon2id'] for b in [256,512]
                   for h in ['sha256','sha512']]
     for fs in ['ext4','btrfs']:
+        if args.cross_key_sizes:
+            for bits,slot in [(256,512),(512,256)]:
+                fixture(root,fs,'pbkdf2',bits,'sha256',slot)
+            continue
         for kdf,bits,hash_name in combos:
             fixture(root,fs,kdf,bits,hash_name)
 
