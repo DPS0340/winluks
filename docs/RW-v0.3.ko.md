@@ -19,7 +19,10 @@ fixture로 비교한다.
   Windows 파일 핸들의 write-through와 매 쓰기 후 `sync_all`을 사용하며, backing-file flush가
   성공한 뒤에만 쓰기를 완료한다. FUA가 없는 요청도 같은 계약을 따른다. 이것이 전체 파일의
   트랜잭션이나 정전 중 섹터 쓰기의 원자성을 제공하는 것은 아니다.
-  파일시스템이 아직 브리지로 전달하지 않은 캐시는 별개이며, 정상 종료에서 함께 flush한다.
+  파일시스템이 아직 브리지로 전달하지 않은 트랜잭션은 별개이며, 정상 종료의 볼륨 lock에서 commit한다.
+  **v0.3.1 실측 제한:** 고정 WinBtrfs의 파일 `FlushFileBuffers` 성공만으로 트랜잭션 지속성을
+  보장할 수 없다. 실제 강제 종료 뒤 성공 응답을 받은 새 파일이 사라졌다. 데이터베이스와
+  fsync/FlushFileBuffers 보장에 의존하는 작업은 지원 범위 밖이다.
 - short write는 남은 바이트를 계속 쓰고, 쓰기 또는 flush 실패는 세션을 영구 오류 상태로
   바꾼다. 이후 쓰기를 성공 처리하지 않는다. 해당 종료는 `UNCLEAN_CLOSE`로 보고한다.
 - WinBtrfs v1.10과 WinSpd의 기존 바이너리를 그대로 사용한다. RW 시험 VM에서는
@@ -38,6 +41,13 @@ RW에서 Ctrl+C는 볼륨 lock → filesystem flush → dismount → backing-fil
 세션을 유지한다. 파일을 닫고 Ctrl+C를 다시 누르면 재시도한다. 강제 종료, 게스트 전원 차단,
 I/O 실패 시 정상 종료를 보장하지 않으며, 복제 이미지를 Linux에서 오프라인 검사해야 한다.
 
+v0.3.1은 callback drain **이후**의 최종 오류를 판정한다. 실제 볼륨이 강제로 RO로 바뀌었거나
+flush/dismount/dispatcher에서 실패하면 정상 종료로 보고하지 않는다. 재시도 가능한 lock의
+사용 중 오류만 `CLOSE_BLOCKED`로 남기며, 다른 종료 오류는 `UNCLEAN_CLOSE`와 실패 exit code다.
+게시 전 이미지에 존재하는 모든 Btrfs superblock mirror를 검증하고 불일치를 거부한다.
+동일 UUID 복사본을 WinBtrfs가 합치는 일을 막기 위해 협력하는 v0.3.1 publisher를 시스템당
+하나로 제한한다. 구버전이나 다른 게시 도구와의 동시 실행은 이 잠금에 포함되지 않는다.
+
 이 순서는 Microsoft의 [volume lock](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume),
 [dismount](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_dismount_volume)
 계약 및 고정 WinBtrfs 소스의 `lock_volume`/`dismount_volume` 처리를 따른다.
@@ -53,5 +63,6 @@ I/O 실패 시 정상 종료를 보장하지 않으며, 복제 이미지를 Linu
    sparse 할당을 검증. Linux가 새 파일을 기록한 이미지를 Windows에서 다시 읽는다.
 6. RW 드라이버 설정에서 RO 세션의 쓰기 거부, RW 세션의 백엔드 공유 거부, ext4 게시 차단.
 
-실행 여부와 결과는 [검증 기록](VALIDATION.md) 및 `docs/evidence/`에 기록한다. 이 확장은
-전체 장애·정전 행렬이나 독립 보안/스토리지 리뷰 완료를 의미하지 않는다.
+실행 여부와 결과는 [검증 기록](VALIDATION.md), [v0.3.1 장애·정전 시험](POWERLOSS-v0.3.1.md) 및
+`docs/evidence/`에 기록한다. 두 별도 AI 리뷰어의 검토와 한정된 VM 시험을 수행했으며, 외부
+전문가 감사·실물 호스트/스토리지 전원 차단·모든 가능한 장애 시점의 검증을 뜻하지 않는다.

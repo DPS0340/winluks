@@ -14,13 +14,22 @@ Read-only is the default; writes require an explicit `--read-write` session.
 Ext4 decrypt/encrypt/probe oracles pass, but its pinned driver did not expose the selected
 partitionless disk as a filesystem volume. The CLI returns `FS_GATE_UNPASSED` for that path.
 
-The tested Windows 11 25H2 profile has **Secure Boot and HVCI off**. This is a development
-project tested with disposable virtual images; full failure/power-loss testing and independent
-security/storage review remain incomplete.
+The tested Windows 11 25H2 profile has **Secure Boot and HVCI off**. v0.3.1 is an
+**experimental prerelease for disposable virtual images**, with a recorded QEMU crash matrix
+and reviews by two separate AI reviewers. These are not an external human audit or a
+guarantee against physical host/storage power loss.
+
+**RW durability limit:** with the pinned WinBtrfs driver, newly written files can disappear
+after a crash even when an application's `FlushFileBuffers` succeeded. A successful orderly
+bridge close (volume lock and dismount) is the supported filesystem commit boundary.
+Databases and other workloads requiring fsync/FlushFileBuffers durability are unsupported.
+See the [v0.3.1 failure and power-cut results](docs/POWERLOSS-v0.3.1.md).
 
 - [Implementation plan (한국어)](docs/PLAN.md)
 - [RW v0.3 contract and test plan (한국어)](docs/RW-v0.3.ko.md)
 - [Validation results and runtime evidence](docs/VALIDATION.md)
+- [v0.3.1 release guide and limitations](docs/START-HERE.md)
+- [Independent AI reviews](docs/reviews/v0.3.1-core-ai.md) / [storage lifecycle review](docs/reviews/v0.3.1-storage-ai.md)
 - [Original RO v0.2 design (한국어)](docs/design-v0.2.0.ko.md)
 
 ## Build
@@ -67,12 +76,18 @@ From an administrator console, use a local image with the LUKS2 header at byte z
 Passwords use a console with echo disabled. There is no password argument or environment
 variable. RW takes an exclusive image handle, preserves its size and writes only the encrypted
 data segment. LUKS headers and keyslots are not modified. Each completed block write is flushed
-to the backing file; filesystem caches are also flushed during normal close.
+to the backing file. Filesystem transactions that have not reached the bridge are separate;
+WinBtrfs commits them during the normal volume-lock close path.
 
 Press **Ctrl+C** to close. RW locks and dismounts the exact session's filesystem before draining
 callbacks and removing the disk. If files remain open, `CLOSE_BLOCKED` leaves the session running:
 close those files and press Ctrl+C again. `UNCLEAN_CLOSE` reports a failed orderly shutdown;
 check a copy offline before using it again for RW.
+
+v0.3.1 checks every Btrfs superblock mirror present in the image before publication and
+rejects disagreement or recovery state. It permits one cooperating v0.3.1 publisher at a
+time to avoid WinBtrfs combining same-UUID copies. This guard does not coordinate older
+winluks versions or other publishers; keep those copies detached.
 
 Physical-device paths, remote files, resize, discard, automatic repair and driver fallback are
 unsupported. The LUKS encryption sector is 512 bytes; the Btrfs filesystem sector is 4096 bytes.
@@ -84,14 +99,21 @@ All test storage is file-backed. A Linux VM generates independent cryptsetup/fil
 fixtures; a Windows VM works on local NTFS copies. Transfer frozen images between guests,
 and detach an image before handing its modified copy to another OS.
 
-Executed v0.3 checks include:
+Executed v0.3.1 checks include:
 
 - 30 RO regression fixtures and 30 RW differential fixtures, including mixed key sizes and slots.
 - Linux dm-crypt comparisons of every byte after boundary, overlapping and 1 MiB writes.
 - Windows file creation, overwrite, append, truncate, sparse files, Unicode, copy, rename and delete.
-- Busy-close rejection, successful retry, device removal and persistent Windows remounts.
-- Linux `btrfs check --readonly`, independent file-content checks and a Linux-to-Windows return file.
+- Busy-close rejection, successful retry and device removal.
+- Linux `btrfs check --readonly` and independent file-content/sparse-allocation checks.
 - RO mutation rejection with unchanged source bytes in the RW-configured guest.
+- Linux/Windows regression tests, 25 native close/publication boundary cases and short ASan fuzz runs.
+- Fresh QEMU overlays for crash, process-kill, orderly-close, disk-full and raw block-flush trials;
+  Linux reads the unbooted crash disks read-only, without Windows repair or Btrfs log replay.
+
+The [results](docs/POWERLOSS-v0.3.1.md) separate filesystem integrity, successful orderly-close
+persistence and the observed failure of application-flush durability. QEMU `SIGKILL` leaves
+the host and its storage powered; deterministic torn-sector/controller tests remain unperformed.
 
 See [detailed results](docs/VALIDATION.md) and [reproduction scripts](scripts/vm/README.md).
 VM rollback alone is not used as evidence of correct read-only or write durability behavior.

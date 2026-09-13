@@ -1,0 +1,474 @@
+{
+  "format": "winluks-v0.3.1-core-v1",
+  "application_commit": "359a612fc7e42d6266c7074cabc690bee8c22a12",
+  "ro_cases": 30,
+  "rw_cases": 30,
+  "ro_generation": [
+    {
+      "fixture": "btrfs-argon2i-256-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-argon2i-256-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-argon2i-512-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-argon2i-512-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-argon2id-256-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-argon2id-256-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-argon2id-512-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-argon2id-512-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-pbkdf2-256-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-pbkdf2-256-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-pbkdf2-512-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-pbkdf2-512-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2i-256-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2i-256-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2i-512-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2i-512-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2id-256-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2id-256-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2id-512-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-argon2id-512-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-pbkdf2-256-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-pbkdf2-256-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-pbkdf2-256-sha256-slot512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-pbkdf2-512-sha256-slot256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-pbkdf2-256-sha256-slot512",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha256-slot256",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "btrfs-pbkdf2-512-sha256-alternate-slot",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha256-alternate-slot",
+      "ro_passed": true,
+      "rw_producer_passed": true
+    }
+  ],
+  "linux_rw_verification": [
+    {
+      "fixture": "btrfs-pbkdf2-512-sha256-alternate-slot",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "cb2f20d3a11fc6344c1b247e203556b7e0d268b263b6d1a0a53bac85b47eaf62",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha256-alternate-slot",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "81c721168f3c74a6dd9fe6d9baa80d749f650aec6589ed685e2ab6d29def63a0",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-pbkdf2-256-sha256-slot512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "9ac68a895ad630898ae41dbdaa15b733beb774eae3377584fdcbe2fc7bfcdf18",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-pbkdf2-512-sha256-slot256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "9750f4c641896f607e5741816c216812d52b04ad735f6bf0857ac6fa199be980",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-pbkdf2-256-sha256-slot512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "ccc43c2e15650a67a8b3ddbe5721db308425402354ffc0e4652943e8b7cf1a9b",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha256-slot256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "1bbd13e0714b8093114896afbf046d195c38db1b320a6a422647cbadbc7cbd3d",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2i-256-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "598d6fe760041b7cdccf3b6199be03b3cf8b07a6d20667c0655553f0af6e7467",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2i-256-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "2da5d8377dfe9cb723483ac3e10b89ed711be1739d681051242c9fa5bb6d41a1",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2i-512-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "d6872c209ae7955e46f4a1d98344684dd2526926193f9aa4a5b4778b5d05b03a",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2i-512-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "4944f28944c64b6497de5325154c5b417f11f2f4bef47a88c087d3c62d89910f",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2id-256-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "8b0a3f98d95ccd71b5f5d6b1a14f06f03f402a4ec5b97de1416dfb1bbf8fcda2",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2id-256-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "cb1662c26311a0f931ace81b641cef1f82c5bf8fe7a2fa259c9890a13a75aa6a",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2id-512-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "b8d7c6c68a81818fea5e543c5be8b592d39bb8a039d61926ae74234af442d133",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-argon2id-512-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "c4008df0356eb5ac641e6749336a0661cbccdef7383d606518d0e2d13a976dec",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-pbkdf2-256-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "860c4e902028da4a725b4cac0dc919312b5c8f43e2f8ffe2784e455deb8aeb5a",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-pbkdf2-256-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "d0e97bbbc98e630e200602e007c9109c2514fe085234eef248b0f43cfb6aa1d1",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-pbkdf2-512-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "4a7bb2d49abd571100e0cf4376591a485927dd49a0e27a25b73619a1db3cb18c",
+      "write_cases": 6
+    },
+    {
+      "fixture": "btrfs-pbkdf2-512-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "cc1d5ec7f0ea434d8adf2e4915d201373d83999ff72bed9c2f88fea752a58ca9",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2i-256-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "a3d6ada84ddb44d992840b35e1f2e3b7affb143da60eab277a497393441317c1",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2i-256-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "db7fa9f6066aa57e98f088eef00c4648733403b4e31b4d84d036267c88595ea3",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2i-512-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "a8b01404900b7dec8977ec8a64f257a05be8380cdaa73ad2d359d4cb7d8a9fbf",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2i-512-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "7dab4dd6604fc25bf4a99cfe535fa8ab0d47e406b5adac69cd30e2c5a2ff2a6c",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2id-256-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "d268266dd5821cd6455c7a078d4a50e40e02fc8d95ff2b3f6c0d7328535b5970",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2id-256-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "146e594b6be689e571d2bd682c05c0854a7c0e3352fd1de758e01e61847ceaeb",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2id-512-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "98a0c8215e6b1d45a2e5188f5e8b58de63c4dccf9546421bb8da14c817601538",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-argon2id-512-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "e2e11dc0ba0235510f71f4c464241e1f6edd814860c0e5a70b3b68cfbccc082c",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-pbkdf2-256-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "59187187273d07a0bdd4ec471c0ea1e578531fb88f971c9c3909b8ed2760f48e",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-pbkdf2-256-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "a9fa952765a4f0412b28a16bf2dfcb947f86902de5d63d20105b6c725763cb42",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha256",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "e7ceff2bea7bac3bd7f0ed96d27add2b40c66059305bef5ef1a121abca0c62aa",
+      "write_cases": 6
+    },
+    {
+      "fixture": "ext4-pbkdf2-512-sha512",
+      "passed": true,
+      "header_unchanged": true,
+      "source_unchanged": true,
+      "bytes_compared": 251658240,
+      "plaintext_sha256": "3da27fbaf0364a82bc014394a49de69a50dc7630d239a1e29d02c96eb7729d8f",
+      "write_cases": 6
+    }
+  ],
+  "fuzz": {
+    "probe": {
+      "executions": 7833396,
+      "seconds": 61
+    },
+    "metadata": {
+      "executions": 4147343,
+      "seconds": 61
+    }
+  },
+  "cargo_audit": {
+    "database": {
+      "advisory-count": 1243,
+      "last-commit": "b50980aad8b8f14f77e25a97b32dd94bf008b0af",
+      "last-updated": "2026-09-09T12:49:52+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 95
+    },
+    "settings": {
+      "target_arch": [],
+      "target_os": [],
+      "severity": null,
+      "ignore": [],
+      "informational_warnings": [
+        "unmaintained",
+        "unsound",
+        "notice"
+      ]
+    },
+    "vulnerabilities": {
+      "found": false,
+      "count": 0,
+      "list": []
+    },
+    "warnings": {}
+  },
+  "secret_scan": {
+    "tool": "gitleaks 8.30.1",
+    "mode": "Git history through d4f670a",
+    "findings": 1,
+    "confirmed_secrets": 0,
+    "triage": "One generic-api-key match is the literal cryptsetup cipher value aes-xts-plain64 in scripts/linux/make-fixtures.py, not a credential."
+  }
+}

@@ -2,7 +2,53 @@
 
 Initial implementation and RW extension: 2026-09-11. Status is updated from executed commands only.
 
-## v0.3 Btrfs RO/RW
+## v0.3.1 hardening and virtual power cuts — 2026-09-13
+
+**Experimental prerelease.** The completed virtual matrix contains 20 final trials across
+10 scenarios, two repetitions each. It found an actual durability limitation: all four
+abrupt-cut/process-kill trials after four successful application file flushes retained
+**0/4 new files**. The supported filesystem commit boundary is an orderly bridge close
+through volume lock/dismount. Databases and fsync-dependent workloads remain unsupported.
+
+| Executed check | Result |
+|---|---|
+| Linux and Windows CI at `d4f670a` | 37 Rust tests on each platform; Windows enables WinSpd callbacks and vendored OpenSSL |
+| Native C shim close/publication regression | 25 cases passed on Windows MSVC; real shim with mocked OS/WinSpd boundaries |
+| New core RO / RW differential regressions | 30/30 each; RW compares all 240 MiB per image through independent Linux dm-crypt |
+| Windows RW lifecycle after fixes | Eight-file workload, actual held-file close rejection/retry and Linux independent content/sparse/fsck checks passed |
+| Candidate default RO and ext4 gate | Six-file copy/hash checks, RO flags, create/rename/delete/raw-write rejection, complete image hash unchanged, actual close exit 0 and device removal; ext4 rejected before password |
+| Duplicate publisher | A second same-UUID copy was rejected with Win32 170 and actual process exit 1 |
+| Final VM matrix | 20 completed trials; five preliminary/incomplete attempts retained and excluded, with reasons |
+| Filesystem crash integrity | 18/18 filesystem cases retained canonical files, LUKS header/keyslot bytes, image size and agreeing mirrors; read-only fsck/mount passed |
+| Normal-close persistence, followed by hard cut | 2/2 cases, 4/4 new files retained in each; actual close exit 0 and `clean=true` |
+| Direct raw block flush persistence | 2/2 cases, three acknowledged writes each; full 240 MiB comparison after QEMU SIGKILL with lock/handles still held |
+| Application file-flush durability | **Failed: 0/4 new files retained in each of four abrupt-cut/process-kill cases**; structural integrity does not change this result |
+| Actual Btrfs disk-full/forced-RO close | 2/2 cases returned `CLOSE_FAILED phase=0 code=19`, `UNCLEAN_CLOSE`, actual exit 1 and `clean=false` |
+| ASan fuzz smoke | Metadata 4,147,343 executions / 61 s; probe 7,833,396 / 61 s; no crash |
+| Cargo audit | 0 known advisories and 0 warnings with recorded advisory database revision |
+| Gitleaks history scan | One confirmed false positive: literal cryptsetup cipher value `aes-xts-plain64`; no confirmed secret |
+| Independent review | Two separate AI reviewers; original P1/P2 findings fixed and re-reviewed; this is not an external human audit |
+
+The tested Windows artifact is from [CI 34749762390](https://github.com/DPS0340/winluks/actions/runs/34749762390),
+commit `d4f670a2e67240b62dea86dccc5f44f5fdd5618b`, executable SHA256
+`e4c66309d46c6bf6e6f8c73630596f3e426472704050cc531a22202b1405d0b8`.
+It runs on the same Windows 11 25H2/WinSpd/WinBtrfs profile described below. Release packaging
+binds the binary to that successful CI artifact and verifies unchanged application/build inputs.
+The earlier eight-file/duplicate/busy-close runtime used the same production fixes at `359a612`.
+
+See the [complete power-cut report](POWERLOSS-v0.3.1.md),
+[per-trial evidence](evidence/v0.3.1-powercut.json), [core results](evidence/v0.3.1-core.json),
+[Windows lifecycle and Linux verification](evidence/v0.3.1-lifecycle.json),
+[core AI review](reviews/v0.3.1-core-ai.md) and [storage AI review](reviews/v0.3.1-storage-ai.md).
+The report distinguishes actual VM failures from deterministic syscall/native mocks, records
+cut-trigger precision and describes the authenticated prewrite baseline for the raw oracle.
+
+QEMU SIGKILL leaves the host and physical storage powered. Host/outer-disk-full, deterministic
+torn sectors, controller power loss and kernel mutation tracing remain untested; ext4 Windows
+publication remains blocked. The historical records below retain their original test counts
+and limitations and are not additional v0.3.1 reruns.
+
+## Historical v0.3 Btrfs RO/RW
 
 The production code at `743d0ed` passed [Linux and Windows CI](https://github.com/DPS0340/winluks/actions/runs/34605278803).
 Its hash-verified Windows artifact was then exercised in a separate RW clone of the Btrfs

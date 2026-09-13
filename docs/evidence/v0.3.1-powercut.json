@@ -1,0 +1,680 @@
+{
+  "format": "winluks-v0.3.1-powercut-v1",
+  "date": "2026-09-13",
+  "application_build_commit": "d4f670a2e67240b62dea86dccc5f44f5fdd5618b",
+  "binary_sha256": "e4c66309d46c6bf6e6f8c73630596f3e426472704050cc531a22202b1405d0b8",
+  "ci_url": "https://github.com/DPS0340/winluks/actions/runs/34749762390",
+  "environment": {
+    "windows": "Windows 11 Enterprise Evaluation 25H2 26200.6584",
+    "linux": "Debian 13, kernel 6.12.107+deb13-amd64, cryptsetup 2.7.5",
+    "winspd": "1.0.20357",
+    "winbtrfs": "1.10",
+    "security": "Secure Boot, HVCI and VBS off",
+    "qemu_storage": "Q35 SATA Windows OS qcow2 overlay, cache=none, aio=threads; file-backed 256MiB LUKS image on guest NTFS",
+    "oracle": "Read-only attachment of unbooted QEMU crash disk to separate Linux VM; read-only clear-key BitLocker extraction if present; read-only NTFS and dm-crypt; btrfs check --readonly and mount ro,nologreplay"
+  },
+  "scope": {
+    "completed_final_trials": 20,
+    "case_types": 10,
+    "repeats_per_case": 2,
+    "filesystem_trials": 18,
+    "raw_block_trials": 2,
+    "diagnostic_or_incomplete_trials_retained": 5,
+    "physical_host_controller_power_cut": false,
+    "deterministic_torn_sector_test": false,
+    "cut_within_a_specific_inflight_backend_write": false,
+    "external_human_audit": false
+  },
+  "conclusions": {
+    "orderly_close_records_preserved": 8,
+    "raw_acknowledged_writes_preserved": 6,
+    "application_flush_durability": "FAILED in four observed abrupt-cut/process-kill trials: 0/4 new records retained in each. Unsupported with pinned WinBtrfs.",
+    "filesystem_integrity": "18/18 final filesystem trials retained canonical files, agreeing mirrors and clean read-only btrfs check results. This is separate from new-data durability.",
+    "disk_full": "Both trials observed ERROR_DISK_FULL and forced-RO close rejection with actual exit1, clean=false, UNCLEAN_CLOSE.",
+    "model_limit": "QEMU SIGKILL stops the guest/hypervisor while host kernel, storage caches and devices remain powered. This does not establish physical power-loss safety or atomic sector writes."
+  },
+  "base_chain": [
+    {
+      "name": "windows-powercut-base",
+      "bytes": 6656294912,
+      "mtime_ns": 1789292459273289683,
+      "unchanged": true
+    },
+    {
+      "name": "windows-rw",
+      "bytes": 15185281024,
+      "mtime_ns": 1789135542940415233,
+      "unchanged": true
+    },
+    {
+      "name": "windows-clean",
+      "bytes": 22676176896,
+      "mtime_ns": 1789128066487391585,
+      "unchanged": true
+    }
+  ],
+  "reproduction_scripts_sha256": {
+    "scripts/vm/run-powercut.py": "a407a235453f83d8e9255bc9660a43cd6a8082d6f398f6205b10d65a3b3436d6",
+    "scripts/windows/powercut-workload.ps1": "4cda334e445818941702bbeb733ff0b4e60d8636d3868709ccb232b4bcaa5702",
+    "scripts/windows/powercut-raw.ps1": "c6c4959528e3e0c11ebd472fc1f57cfda928597f73176a322cc9e2d86e5eb123",
+    "scripts/linux/verify-powercut.py": "2dc1db7c9816f14d0f5017a3a6b7142f4edba91e517b0d3cb75f78a5610c4a06"
+  },
+  "trials": [
+    {
+      "trial": "normal-03",
+      "case": "normal-close",
+      "hard_cut": true,
+      "clean_close": true,
+      "close_exit": 0,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "0cb98f67d1b0cb9128bfd673f1ce577e4a69c2a0e1df9800dd63c1d67cb4be92",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 4,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "cad4cf3a924fd730a98ad8b912ecadd5d1ae638012a9d87680dfd7ca06e85c0f",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        10,
+        10
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "orderly_close_persistence": "passed"
+    },
+    {
+      "trial": "normal-04",
+      "case": "normal-close",
+      "hard_cut": true,
+      "clean_close": true,
+      "close_exit": 0,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "1036f37d58b9dd3e14ad5c9438635b8d02463c33d3b8178733a2d4ae5f68b77e",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 4,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "afe7d00a5f7c4e960d6096d6e523cb6630eeffc756b26ba53973f15e9f3184c4",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        10,
+        10
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "orderly_close_persistence": "passed"
+    },
+    {
+      "trial": "raw-04",
+      "case": "raw-block",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 255,
+      "password_logged": false,
+      "image_sha256": "e210cdf242f9f3494c64a1df09ec019873a24b89d9922a5a8917e6577c77c18e",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 0,
+      "matching_file_records": 0,
+      "event_log_sha256": "a8ffb0f532e1f0dbd9bdd1db5b0f55395d6a5b0217d6d9bbdab23efde387fa7d",
+      "linux_report_sha256": "14b272ccc9416719e27775fc6993e580df30a87a477c16a4ecfa4fdb76cbc8d1",
+      "raw_workload_alive_at_cut": true,
+      "block_oracle_passed": true,
+      "bytes_compared": 251658240,
+      "acknowledged_block_writes": 3,
+      "prewrite_baseline_sha256": "ef9843b5e80b39e440f2c7775ee236fd04c987651ec191ce120b15e58e654768",
+      "prewrite_baseline_source": "Windows raw read after volume lock/dismount and before the tested writes",
+      "block_events": [
+        {
+          "kind": "raw-baseline",
+          "bytes": 251658240,
+          "sha256": "ef9843b5e80b39e440f2c7775ee236fd04c987651ec191ce120b15e58e654768"
+        },
+        {
+          "kind": "block-flushed",
+          "offset": 0,
+          "length": 512,
+          "seed": 83
+        },
+        {
+          "kind": "block-flushed",
+          "offset": 131072,
+          "length": 1048576,
+          "seed": 112
+        },
+        {
+          "kind": "block-flushed",
+          "offset": 251657728,
+          "length": 512,
+          "seed": 141
+        },
+        {
+          "kind": "workload-complete"
+        }
+      ]
+    },
+    {
+      "trial": "raw-05",
+      "case": "raw-block",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 255,
+      "password_logged": false,
+      "image_sha256": "d9e8e2352b258571175c58ed05cb4012fc0af09d16a0e40331504cf3245aa211",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 0,
+      "matching_file_records": 0,
+      "event_log_sha256": "b17af7d0116d41284c6d14e8e0b40762f6024eeddf536728591f79183b4f77a9",
+      "linux_report_sha256": "372f14406b9693c7129f05a7b85cf4ab380ba756bb0ce42269e4f4ef93d56be9",
+      "raw_workload_alive_at_cut": true,
+      "block_oracle_passed": true,
+      "bytes_compared": 251658240,
+      "acknowledged_block_writes": 3,
+      "prewrite_baseline_sha256": "9aca8a96a354a6ec2654903b4520ef33172fc51ba3d2cd5da7d2ff38bc25e598",
+      "prewrite_baseline_source": "Windows raw read after volume lock/dismount and before the tested writes",
+      "block_events": [
+        {
+          "kind": "raw-baseline",
+          "bytes": 251658240,
+          "sha256": "9aca8a96a354a6ec2654903b4520ef33172fc51ba3d2cd5da7d2ff38bc25e598"
+        },
+        {
+          "kind": "block-flushed",
+          "offset": 0,
+          "length": 512,
+          "seed": 83
+        },
+        {
+          "kind": "block-flushed",
+          "offset": 131072,
+          "length": 1048576,
+          "seed": 112
+        },
+        {
+          "kind": "block-flushed",
+          "offset": 251657728,
+          "length": 512,
+          "seed": 141
+        },
+        {
+          "kind": "workload-complete"
+        }
+      ]
+    },
+    {
+      "trial": "power-idle-01",
+      "case": "power-idle",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": null,
+      "password_logged": false,
+      "image_sha256": "a210ace894bdedc65f978262e1c062c412fab9a44371bb254f4b165cb364273e",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 0,
+      "matching_file_records": 0,
+      "event_log_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "linux_report_sha256": "3c8cc7595435a3be995c07869a437e24f9b31094cf55baabe1df520a7dea283d",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true
+    },
+    {
+      "trial": "power-idle-02",
+      "case": "power-idle",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": null,
+      "password_logged": false,
+      "image_sha256": "a210ace894bdedc65f978262e1c062c412fab9a44371bb254f4b165cb364273e",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 0,
+      "matching_file_records": 0,
+      "event_log_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "linux_report_sha256": "3c8cc7595435a3be995c07869a437e24f9b31094cf55baabe1df520a7dea283d",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true
+    },
+    {
+      "trial": "power-flushed-01",
+      "case": "power-flushed",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "62dede0846180cf277a555645a8468065f7b44fbc17443e30b76d7435194e6b4",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 0,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "de4732228f1730b5d92b562ac85a0783a03b890bff394d4face44380b2a41abc",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "application_flush_durability": "failed"
+    },
+    {
+      "trial": "power-flushed-02",
+      "case": "power-flushed",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "62dede0846180cf277a555645a8468065f7b44fbc17443e30b76d7435194e6b4",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 0,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "de4732228f1730b5d92b562ac85a0783a03b890bff394d4face44380b2a41abc",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "application_flush_durability": "failed"
+    },
+    {
+      "trial": "power-stream-01",
+      "case": "power-stream",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 255,
+      "password_logged": false,
+      "image_sha256": "3a136249d046b79c46eae91cc136fa5f6cd81280d998cf7ac2e2fc9eab8559e0",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 1,
+      "matching_file_records": 0,
+      "event_log_sha256": "f55ea3f9ac9460243bb44b21f7a3f75e212f6cd00f9dce3c53f3be28f14ed523",
+      "linux_report_sha256": "52b8ae27164e9c711849da39217d71b1daa0f52bfdc4218a0a20c90357cfb414",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true
+    },
+    {
+      "trial": "power-stream-02",
+      "case": "power-stream",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 255,
+      "password_logged": false,
+      "image_sha256": "3a136249d046b79c46eae91cc136fa5f6cd81280d998cf7ac2e2fc9eab8559e0",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 1,
+      "matching_file_records": 0,
+      "event_log_sha256": "f55ea3f9ac9460243bb44b21f7a3f75e212f6cd00f9dce3c53f3be28f14ed523",
+      "linux_report_sha256": "52b8ae27164e9c711849da39217d71b1daa0f52bfdc4218a0a20c90357cfb414",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true
+    },
+    {
+      "trial": "power-close-01",
+      "case": "power-close",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "62dede0846180cf277a555645a8468065f7b44fbc17443e30b76d7435194e6b4",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 0,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "de4732228f1730b5d92b562ac85a0783a03b890bff394d4face44380b2a41abc",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true
+    },
+    {
+      "trial": "power-close-02",
+      "case": "power-close",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "62dede0846180cf277a555645a8468065f7b44fbc17443e30b76d7435194e6b4",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 0,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "de4732228f1730b5d92b562ac85a0783a03b890bff394d4face44380b2a41abc",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true
+    },
+    {
+      "trial": "process-idle-01",
+      "case": "process-idle",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": null,
+      "password_logged": false,
+      "image_sha256": "a210ace894bdedc65f978262e1c062c412fab9a44371bb254f4b165cb364273e",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 0,
+      "matching_file_records": 0,
+      "event_log_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "linux_report_sha256": "3c8cc7595435a3be995c07869a437e24f9b31094cf55baabe1df520a7dea283d",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "device_removed_after_process_kill": true
+    },
+    {
+      "trial": "process-idle-02",
+      "case": "process-idle",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": null,
+      "password_logged": false,
+      "image_sha256": "a210ace894bdedc65f978262e1c062c412fab9a44371bb254f4b165cb364273e",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 0,
+      "matching_file_records": 0,
+      "event_log_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "linux_report_sha256": "3c8cc7595435a3be995c07869a437e24f9b31094cf55baabe1df520a7dea283d",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "device_removed_after_process_kill": true
+    },
+    {
+      "trial": "process-flushed-01",
+      "case": "process-flushed",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "62dede0846180cf277a555645a8468065f7b44fbc17443e30b76d7435194e6b4",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 0,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "de4732228f1730b5d92b562ac85a0783a03b890bff394d4face44380b2a41abc",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "application_flush_durability": "failed",
+      "device_removed_after_process_kill": true
+    },
+    {
+      "trial": "process-flushed-02",
+      "case": "process-flushed",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "62dede0846180cf277a555645a8468065f7b44fbc17443e30b76d7435194e6b4",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 4,
+      "matching_file_records": 0,
+      "event_log_sha256": "ef3c657bb4e461995bc4b21aaf53ba7e5dca1280999c0a97926696d7cab9ef80",
+      "linux_report_sha256": "de4732228f1730b5d92b562ac85a0783a03b890bff394d4face44380b2a41abc",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "application_flush_durability": "failed",
+      "device_removed_after_process_kill": true
+    },
+    {
+      "trial": "process-stream-01",
+      "case": "process-stream",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "eb2a99b442c44f5980811621d90666c7cdf24dcc3ed3edadf4c08324f4a9fac6",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 96,
+      "matching_file_records": 0,
+      "event_log_sha256": "21e8a25328ba576e936d9a7b836f60e5006227f3406952f927f601dd73288613",
+      "linux_report_sha256": "98a637f1c74eec31fe85582e5a9b769a0950e634d189826c8995f7f84541a9cd",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "device_removed_after_process_kill": true
+    },
+    {
+      "trial": "process-stream-02",
+      "case": "process-stream",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": null,
+      "workload_exit": 0,
+      "password_logged": false,
+      "image_sha256": "eb2a99b442c44f5980811621d90666c7cdf24dcc3ed3edadf4c08324f4a9fac6",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 96,
+      "matching_file_records": 0,
+      "event_log_sha256": "21e8a25328ba576e936d9a7b836f60e5006227f3406952f927f601dd73288613",
+      "linux_report_sha256": "98a637f1c74eec31fe85582e5a9b769a0950e634d189826c8995f7f84541a9cd",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "device_removed_after_process_kill": true
+    },
+    {
+      "trial": "full-01",
+      "case": "disk-full",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": 1,
+      "workload_exit": 1,
+      "password_logged": false,
+      "image_sha256": "1bba078442037cdd1f3c76e69b1be6fad354aea2cda91544b62781357e98dc3f",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 221,
+      "matching_file_records": 0,
+      "event_log_sha256": "c60ea5effb47b2c422a05402439aeca70870b46a1958cee807694d2ba15d6f41",
+      "linux_report_sha256": "e8b2fc4423837f4836f5f4ee251e10e8b10d3c997475e11bdbe68dcb59350cf6",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "filesystem_full_error": 112,
+      "close_failure": {
+        "phase": 0,
+        "code": 19
+      },
+      "unclean_close_reported": true
+    },
+    {
+      "trial": "full-02",
+      "case": "disk-full",
+      "hard_cut": true,
+      "clean_close": false,
+      "close_exit": 1,
+      "workload_exit": 1,
+      "password_logged": false,
+      "image_sha256": "19ad1116c886945405e25b4aa9e38cda2e43603f6fd063ac747588d97150c662",
+      "header_unchanged": true,
+      "canonical_image_unchanged": true,
+      "image_size_unchanged": true,
+      "observed_file_records": 221,
+      "matching_file_records": 0,
+      "event_log_sha256": "c60ea5effb47b2c422a05402439aeca70870b46a1958cee807694d2ba15d6f41",
+      "linux_report_sha256": "1cbd18864db32243cd7eafe6c18163c59020a41c352b2e6fb7ca2db4c866f491",
+      "btrfs_check_exit": 0,
+      "read_only_mount_exit": 0,
+      "canonical_files_match": true,
+      "mirror_generations": [
+        9,
+        9
+      ],
+      "mirrors_agree": true,
+      "structural_checks_passed": true,
+      "filesystem_full_error": 112,
+      "close_failure": {
+        "phase": 0,
+        "code": 19
+      },
+      "unclean_close_reported": true
+    }
+  ],
+  "excluded_attempts": [
+    {
+      "trial": "normal-01",
+      "reason": "Preliminary Linux QMP hotplug setup failed; base was subsequently booted before the final matrix. Excluded and rerun."
+    },
+    {
+      "trial": "normal-02",
+      "reason": "Preliminary console wrapper could not obtain the real application exit code after Ctrl+C. Excluded and rerun with an independent process-handle exit watcher."
+    },
+    {
+      "trial": "raw-01",
+      "reason": "Buffered stdout plus select could delay the cut until after a finite held-lock window. Timing was not authenticated; excluded and rerun."
+    },
+    {
+      "trial": "raw-02",
+      "reason": "Full comparison against the pre-mount Linux baseline failed. Independent diagnosis found the three tested write regions persisted, with differences in Btrfs metadata from the preceding volume-lock commit. Retained as an oracle failure and rerun with a prewrite baseline."
+    },
+    {
+      "trial": "raw-03",
+      "reason": "Prewrite baseline sidecar was absent from the no-replay NTFS crash view, so verification was incomplete. Retained and rerun with host capture/hash verification before the write permission handshake."
+    }
+  ]
+}

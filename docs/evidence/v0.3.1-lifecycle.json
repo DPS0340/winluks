@@ -1,0 +1,56 @@
+{
+  "date": "2026-09-13",
+  "rw_application_commit": "359a612fc7e42d6266c7074cabc690bee8c22a12",
+  "rw_console": {
+    "exit_code": 0,
+    "password_logged": false,
+    "clean_close": true,
+    "busy_close_rejected": true,
+    "read_only": false
+  },
+  "rw_policy": {
+    "duplicate_publisher_rejected": true,
+    "held_file_confirmed": true,
+    "busy_close_retained_session": true,
+    "released_handle_then_retried": true
+  },
+  "rw_linux_verification": {
+    "passed": true,
+    "filesystem": "btrfs",
+    "header_unchanged": true,
+    "canonical_source_unchanged": true,
+    "btrfs_check_readonly_passed": true,
+    "windows_file_hashes_match": true,
+    "payload_matches_independent_pattern": true,
+    "sparse_allocation_verified": true,
+    "linux_return_file_written": false,
+    "file_count": 8,
+    "image_sha256": "5ada54c9dd0fc492d138175a8d9b23ac45317b59d529ad8fda9edf9b59a72cb7"
+  },
+  "candidate_ro_regression": {
+    "application_build_commit": "d4f670a2e67240b62dea86dccc5f44f5fdd5618b",
+    "binary_sha256": "e4c66309d46c6bf6e6f8c73630596f3e426472704050cc531a22202b1405d0b8",
+    "default_read_only": true,
+    "mounted": {
+      "passed": true,
+      "disk_read_only": true,
+      "mutation_errors": {
+        "delete": -2147024877,
+        "create": -2146233087,
+        "raw_write": 1117,
+        "rename": -2147024877
+      },
+      "fixture": "btrfs-pbkdf2-512-sha256",
+      "volume_read_only": true,
+      "file_hashes_match": true
+    },
+    "file_count": 6,
+    "complete_image_sha256_unchanged": true,
+    "image_sha256": "a210ace894bdedc65f978262e1c062c412fab9a44371bb254f4b165cb364273e",
+    "device_removed": true,
+    "actual_close_exit": 0,
+    "clean_close": true,
+    "password_logged": false,
+    "ext4_gate_rejected_before_password": true
+  }
+}
