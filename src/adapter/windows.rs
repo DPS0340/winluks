@@ -17,10 +17,10 @@ unsafe extern "C" {
         out: *mut *mut c_void,
     ) -> u32;
     fn wl_error(session: *mut c_void) -> u32;
-    fn wl_close(session: *mut c_void);
+    fn wl_close(session: *mut c_void) -> u32;
     fn wl_consumer_ready(filesystem: u32, read_only: u32, driver: *mut u16, capacity: u32) -> u32;
     fn wl_volume_ready(session: *mut c_void) -> u32;
-    fn wl_lock_and_dismount(session: *mut c_void) -> u32;
+    fn wl_lock_and_dismount(session: *mut c_void, phase: *mut u32) -> u32;
 }
 pub(super) fn check_consumer(filesystem: crate::probe::Filesystem, mode: AccessMode) -> Result<()> {
     use crate::probe::Filesystem;
@@ -79,10 +79,11 @@ fn code(r: Result<()>) -> i32 {
     }
 }
 unsafe extern "C" fn read_cb(p: *mut c_void, lba: u64, count: u32, buffer: *mut c_void) -> i32 {
-    catch_unwind(AssertUnwindSafe(|| {
-        if p.is_null() || count > 2048 || (count != 0 && buffer.is_null()) {
-            return 2;
-        }
+    if p.is_null() || count > 2048 || (count != 0 && buffer.is_null()) {
+        return 2;
+    }
+    let a = unsafe { &*p.cast::<BlockAdapter>() };
+    let outcome = catch_unwind(AssertUnwindSafe(|| {
         // Clear before calling Rust, so even a caught panic cannot expose stale plaintext.
         if count != 0 {
             unsafe { ptr::write_bytes(buffer.cast::<u8>(), 0, count as usize * 512) };
@@ -106,8 +107,17 @@ unsafe extern "C" fn read_cb(p: *mut c_void, lba: u64, count: u32, buffer: *mut 
                 code(Err(e))
             }
         }
-    }))
-    .unwrap_or(4)
+    }));
+    match outcome {
+        Ok(code) => code,
+        Err(_) => {
+            a.mark_faulted();
+            if count != 0 {
+                unsafe { ptr::write_bytes(buffer.cast::<u8>(), 0, count as usize * 512) };
+            }
+            5
+        }
+    }
 }
 unsafe extern "C" fn write_cb(p: *mut c_void, lba: u64, count: u32, buffer: *const c_void) -> i32 {
     if p.is_null() || count > 2048 || (count != 0 && buffer.is_null()) {
@@ -130,18 +140,23 @@ unsafe extern "C" fn write_cb(p: *mut c_void, lba: u64, count: u32, buffer: *con
     }
 }
 unsafe extern "C" fn control_cb(p: *mut c_void, op: u32, lba: u64, count: u32) -> i32 {
-    catch_unwind(AssertUnwindSafe(|| {
-        if p.is_null() {
-            return 4;
-        }
-        let a = unsafe { &*p.cast::<BlockAdapter>() };
+    if p.is_null() {
+        return 4;
+    }
+    let a = unsafe { &*p.cast::<BlockAdapter>() };
+    match catch_unwind(AssertUnwindSafe(|| {
         code(match op {
             2 => a.flush(lba, count),
             3 => a.unmap(),
             _ => Err(Error::InvalidRange),
         })
-    }))
-    .unwrap_or(4)
+    })) {
+        Ok(status) => status,
+        Err(_) => {
+            a.mark_faulted();
+            5
+        }
+    }
 }
 pub fn serve(volume: ValidatedVolume) -> Result<()> {
     let read_only = volume.mode() == AccessMode::ReadOnly;
@@ -173,6 +188,7 @@ pub fn serve(volume: ValidatedVolume) -> Result<()> {
         && std::time::Instant::now() < deadline
         && unsafe { wl_error(session) } == 0
         && !adapter.faulted()
+        && !quit.load(Ordering::Acquire)
     {
         std::thread::sleep(Duration::from_millis(100));
         ready = unsafe { wl_volume_ready(session) };
@@ -188,25 +204,30 @@ pub fn serve(volume: ValidatedVolume) -> Result<()> {
                 if read_only {
                     break;
                 }
-                let rc = unsafe { wl_lock_and_dismount(session) };
+                let mut phase = 0;
+                let rc = unsafe { wl_lock_and_dismount(session, &mut phase) };
                 if rc == 0 {
                     clean = true;
                     break;
                 }
-                eprintln!("CLOSE_BLOCKED code={rc}; close open files and press Ctrl+C again");
+                if phase == 1 && [5, 32, 33, 170].contains(&rc) {
+                    eprintln!("CLOSE_BLOCKED code={rc}; close open files and press Ctrl+C again");
+                } else {
+                    eprintln!("CLOSE_FAILED phase={phase} code={rc}");
+                    adapter.mark_faulted();
+                    break;
+                }
             }
             std::thread::sleep(Duration::from_millis(100));
         }
     } else {
         eprintln!("VOLUME_DISCOVERY_ERROR code={ready}");
         if !read_only {
-            clean = unsafe { wl_lock_and_dismount(session) } == 0;
+            let mut phase = 0;
+            clean = unsafe { wl_lock_and_dismount(session, &mut phase) } == 0;
         }
     }
-    let sync_failed = adapter.flush(0, 0).is_err();
-    adapter.stop();
-    let failed = unsafe { wl_error(session) } != 0 || adapter.faulted() || sync_failed;
-    unsafe { wl_close(session) }; // Returns only after callbacks have drained; Box remains alive.
+    let failed = adapter.shutdown(|| unsafe { wl_close(session) });
     eprintln!(
         "CLOSED reads={} write_callbacks={} unmap_callbacks={} flush_callbacks={} clean={}",
         adapter.reads.load(Ordering::Relaxed),
@@ -223,5 +244,33 @@ pub fn serve(volume: ValidatedVolume) -> Result<()> {
         Err(Error::DevicePublishFailed)
     } else {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::image::fault::Operation;
+    #[test]
+    fn callback_panics_are_immediately_sticky_and_reads_are_zeroed() {
+        for op in [Operation::Read, Operation::Write, Operation::Sync] {
+            let (_dir, _path, v) = crate::volume::tests::panic_session(op);
+            let mut a = BlockAdapter::new(v);
+            let context = (&mut a as *mut BlockAdapter).cast();
+            let mut buffer = [0xa5u8; 512];
+            let result = unsafe {
+                match op {
+                    Operation::Read => read_cb(context, 0, 1, buffer.as_mut_ptr().cast()),
+                    Operation::Write => write_cb(context, 0, 1, buffer.as_ptr().cast()),
+                    Operation::Sync => control_cb(context, 2, 0, 0),
+                }
+            };
+            assert_eq!(result, 5);
+            assert!(a.faulted());
+            if op == Operation::Read {
+                assert_eq!(buffer, [0; 512]);
+            }
+            assert_eq!(a.write(0, &[0; 512]), Err(Error::WritebackFailed));
+        }
     }
 }

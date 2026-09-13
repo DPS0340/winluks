@@ -195,7 +195,7 @@ pub(crate) fn checked_range(total: u64, offset: u64, len: usize) -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::adapter::BlockAdapter;
     use std::fs;
@@ -221,6 +221,19 @@ mod tests {
         (dir, path, v)
     }
 
+    #[cfg(all(windows, feature = "winspd"))]
+    pub(crate) fn panic_session(
+        op: crate::image::fault::Operation,
+    ) -> (tempfile::TempDir, std::path::PathBuf, ValidatedVolume) {
+        let session = session(AccessMode::ReadWrite);
+        session
+            .2
+            .volume
+            .image
+            .fault
+            .set(&[(op, crate::image::fault::Action::Panic)]);
+        session
+    }
     #[test]
     fn writes_preserve_headers_trailer_and_geometry() {
         let (_dir, path, v) = session(AccessMode::ReadWrite);
@@ -284,5 +297,94 @@ mod tests {
             assert_eq!(v.read_at(0, 512), Err(Error::WritebackFailed));
             assert_eq!(v.flush(), Err(Error::WritebackFailed));
         }
+    }
+    #[test]
+    fn short_and_interrupted_io_preserves_order_and_bytes() {
+        use crate::image::fault::{Action::*, Operation::*};
+        use std::io::ErrorKind::Interrupted;
+        for prefix in [1, 511, 512, 4095] {
+            let (_dir, _path, v) = session(AccessMode::ReadWrite);
+            v.volume
+                .image
+                .fault
+                .set(&[(Write, Fail(Interrupted)), (Write, Limit(prefix))]);
+            v.write_at(0, &[0x49; 4096]).unwrap();
+            assert_eq!(v.volume.image.fault.events(), [Write, Write, Write, Sync]);
+            v.volume
+                .image
+                .fault
+                .set(&[(Read, Fail(Interrupted)), (Read, Limit(prefix))]);
+            assert_eq!(&*v.read_at(0, 4096).unwrap(), &[0x49; 4096]);
+            assert_eq!(v.volume.image.fault.events(), [Read, Read, Read]);
+            assert!(!v.faulted());
+        }
+    }
+    #[test]
+    fn injected_failures_are_sticky_and_never_acknowledged() {
+        use crate::image::fault::{Action::*, Operation::*};
+        use std::io::ErrorKind::Other;
+        let cases = [
+            vec![(Write, Fail(Other))],
+            vec![(Write, Limit(512)), (Write, Fail(Other))],
+            vec![(Write, Limit(0))],
+            vec![(Write, Limit(4096)), (Sync, Fail(Other))],
+            vec![(Read, Fail(Other))],
+            vec![(Read, Limit(0))],
+            vec![(Sync, Fail(Other))],
+        ];
+        for steps in cases {
+            let (_dir, path, v) = session(AccessMode::ReadWrite);
+            v.volume.image.fault.set(&steps);
+            let result = match steps[0].0 {
+                Read => v.read_at(0, 512).map(|_| ()),
+                Write => v.write_at(0, &[0x39; 4096]),
+                Sync => v.flush(),
+            };
+            assert_eq!(result, Err(Error::WritebackFailed));
+            assert!(v.faulted());
+            v.volume.image.fault.set(&[]);
+            assert_eq!(v.write_at(0, &[0; 512]), Err(Error::WritebackFailed));
+            assert_eq!(v.read_at(0, 512), Err(Error::WritebackFailed));
+            assert_eq!(v.flush(), Err(Error::WritebackFailed));
+            assert!(v.volume.image.fault.events().is_empty());
+            drop(v);
+            let bytes = fs::read(path).unwrap();
+            assert!(bytes[..1024].iter().all(|b| *b == 0xa5));
+            assert!(bytes[5120..].iter().all(|b| *b == 0xa5));
+            assert_eq!(bytes.len(), 5632);
+        }
+    }
+    #[test]
+    fn backend_panics_poison_io_and_prevent_future_success() {
+        use crate::image::fault::{Action::Panic, Operation::*};
+        for op in [Read, Write, Sync] {
+            let (_dir, _path, v) = session(AccessMode::ReadWrite);
+            v.volume.image.fault.set(&[(op, Panic)]);
+            assert!(
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match op {
+                    Read => v.read_at(0, 512).map(|_| ()),
+                    Write => v.write_at(0, &[0; 512]),
+                    Sync => v.flush(),
+                }))
+                .is_err()
+            );
+            assert_eq!(v.flush(), Err(Error::WritebackFailed));
+            assert!(v.faulted());
+            assert_eq!(v.write_at(0, &[0; 512]), Err(Error::WritebackFailed));
+        }
+    }
+    #[test]
+    fn shutdown_observes_faults_and_transport_errors_after_drain() {
+        let (_dir, _path, v) = session(AccessMode::ReadWrite);
+        let a = BlockAdapter::new(v);
+        let failed = a.shutdown(|| {
+            a.mark_faulted();
+            0
+        });
+        assert!(failed);
+        let (_dir, _path, v) = session(AccessMode::ReadWrite);
+        assert!(BlockAdapter::new(v).shutdown(|| 5));
+        let (_dir, _path, v) = session(AccessMode::ReadWrite);
+        assert!(!BlockAdapter::new(v).shutdown(|| 0));
     }
 }

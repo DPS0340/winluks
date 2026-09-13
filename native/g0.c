@@ -9,7 +9,7 @@ typedef int (*WRITE_FN)(void *, uint64_t, uint32_t, const void *);
 typedef int (*CTL_FN)(void *, uint32_t, uint64_t, uint32_t);
 DWORD wl_create(void *, READ_FN, WRITE_FN, CTL_FN, uint64_t, uint32_t, void **);
 DWORD wl_error(void *);
-void wl_close(void *);
+DWORD wl_close(void *);
 typedef struct { HANDLE file; uint64_t bytes, reads, writes, unmaps; } TEST_DISK;
 static HANDLE stop_event;
 static BOOL WINAPI stop(DWORD kind) { (void)kind; SetEvent(stop_event); return TRUE; }
@@ -57,7 +57,7 @@ int wmain(int argc,wchar_t **argv) {
     if(rc) { fprintf(stderr,"WINSPD_CREATE_ERROR code=%lu\n",rc);CloseHandle(d.file);CloseHandle(stop_event);return 4; }
     puts("PUBLISHED_RO G0_PLAINTEXT_FIXTURE");fflush(stdout);
     for(DWORD i=0;i<seconds;i++) { if(WaitForSingleObject(stop_event,1000)==WAIT_OBJECT_0||wl_error(session)) break; }
-    rc=wl_error(session);wl_close(session);
+    rc=wl_error(session);{DWORD closed=wl_close(session);if(!rc)rc=closed;}
     printf("CLOSED reads=%llu write_callbacks=%llu unmap_callbacks=%llu dispatcher_error=%lu\n",d.reads,d.writes,d.unmaps,rc);
     CloseHandle(d.file);CloseHandle(stop_event);return rc?5:0;
 }

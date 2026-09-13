@@ -22,6 +22,7 @@ typedef struct {
     WL_WRITE write;
     WL_CONTROL control;
     HANDLE locked_volume;
+    HANDLE publish_guard;
     char serial[37];
 } WL_SESSION;
 
@@ -118,24 +119,33 @@ DWORD wl_create(void *context, WL_READ read, WL_WRITE write, WL_CONTROL control,
     if (!blocks || !context || !read || !write || !control) return ERROR_INVALID_PARAMETER;
     s = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof *s);
     if (!s) return ERROR_NOT_ENOUGH_MEMORY;
+    /* Same-UUID image copies must not be mounted concurrently by this bridge. */
+    s->publish_guard = CreateMutexW(0, FALSE, L"Global\\winluks-publication-v1");
+    error = GetLastError();
+    if (!s->publish_guard || error == ERROR_ALREADY_EXISTS) {
+        if (s->publish_guard) CloseHandle(s->publish_guard);
+        HeapFree(GetProcessHeap(), 0, s);
+        return error == ERROR_ALREADY_EXISTS ? ERROR_BUSY : error;
+    }
     s->context = context; s->read = read; s->write = write; s->control = control;
-    if (FAILED(CoCreateGuid(&p.Guid))) { HeapFree(GetProcessHeap(), 0, s); return ERROR_GEN_FAILURE; }
+    if (FAILED(CoCreateGuid(&p.Guid))) { CloseHandle(s->publish_guard); HeapFree(GetProcessHeap(), 0, s); return ERROR_GEN_FAILURE; }
     /* WinSpd's pinned kernel formats the SCSI serial from this session GUID. */
     sprintf_s(s->serial, sizeof s->serial, "%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
         p.Guid.Data1, p.Guid.Data2, p.Guid.Data3, p.Guid.Data4[0], p.Guid.Data4[1],
         p.Guid.Data4[2], p.Guid.Data4[3], p.Guid.Data4[4], p.Guid.Data4[5], p.Guid.Data4[6], p.Guid.Data4[7]);
     p.BlockCount = blocks; p.BlockLength = 512;
-    memcpy(p.ProductId, read_only ? "winluks RO" : "winluks RW", 10); memcpy(p.ProductRevisionLevel, "0300", 4);
+    memcpy(p.ProductId, read_only ? "winluks RO" : "winluks RW", 10); memcpy(p.ProductRevisionLevel, "0301", 4);
     p.WriteProtected = read_only != 0; p.CacheSupported = 0; p.UnmapSupported = 0;
     p.MaxTransferLength = 1024 * 1024;
     error = SpdStorageUnitCreate(0, &p, &iface, &s->unit);
-    if (error) { HeapFree(GetProcessHeap(), 0, s); return error; }
+    if (error) { CloseHandle(s->publish_guard); HeapFree(GetProcessHeap(), 0, s); return error; }
     s->unit->UserContext = s;
     error = SpdStorageUnitStartDispatcher(s->unit, 1);
     if (error) {
         SpdStorageUnitShutdown(s->unit);
         SpdStorageUnitWaitDispatcher(s->unit);
         SpdStorageUnitDelete(s->unit);
+        CloseHandle(s->publish_guard);
         HeapFree(GetProcessHeap(), 0, s); return error;
     }
     *out = s; return ERROR_SUCCESS;
@@ -200,30 +210,59 @@ DWORD wl_volume_ready(WL_SESSION *s) {
         return ERROR_WRITE_PROTECT;
     return ERROR_SUCCESS;
 }
-DWORD wl_lock_and_dismount(WL_SESSION *s) {
+/* All mode/identity checks refer to the already opened volume handle. */
+static DWORD volume_mode(HANDLE volume, int readonly) {
+    wchar_t filesystem[32];
+    DWORD serial, max, flags;
+    if (!GetVolumeInformationByHandleW(volume, 0, 0, &serial, &max, &flags, filesystem, 32)) return GetLastError();
+    if (_wcsicmp(filesystem, L"BTRFS")) return ERROR_UNRECOGNIZED_VOLUME;
+    if (!!(flags & FILE_READ_ONLY_VOLUME) != !!readonly) return ERROR_WRITE_PROTECT;
+    return ERROR_SUCCESS;
+}
+DWORD wl_lock_and_dismount(WL_SESSION *s, DWORD *phase) {
     HANDLE volume;
     wchar_t root[64];
     DWORD n, error;
+    *phase = 0; /* lookup/mode; only phase 1 sharing failures are retryable */
     if (s->locked_volume) return ERROR_SUCCESS;
     error = find_volume(s, &volume, root, GENERIC_READ | GENERIC_WRITE);
     if (error) return error;
+    error = volume_mode(volume, 0);
+    if (error) { CloseHandle(volume); return error; }
+    *phase = 1;
     if (!DeviceIoControl(volume, FSCTL_LOCK_VOLUME, 0, 0, 0, 0, &n, 0)) {
-        error = GetLastError(); CloseHandle(volume); return error;
-    }
-    if (!FlushFileBuffers(volume) || !DeviceIoControl(volume, FSCTL_DISMOUNT_VOLUME, 0, 0, 0, 0, &n, 0)) {
         error = GetLastError();
+        /* WinBtrfs can switch to RO after a failed transaction commit. */
+        if (volume_mode(volume, 0)) { *phase = 0; error = ERROR_WRITE_PROTECT; }
+        CloseHandle(volume); return error;
+    }
+    *phase = 2;
+    error = volume_mode(volume, 0);
+    if (!error && !FlushFileBuffers(volume)) error = GetLastError();
+    if (!error) {
+        *phase = 3;
+        if (!DeviceIoControl(volume, FSCTL_DISMOUNT_VOLUME, 0, 0, 0, 0, &n, 0)) error = GetLastError();
+    }
+    if (error) {
         DeviceIoControl(volume, FSCTL_UNLOCK_VOLUME, 0, 0, 0, 0, &n, 0);
         CloseHandle(volume); return error;
     }
-    s->locked_volume = volume; /* Hold the lock until the virtual disk is gone. */
+    *phase = 4;
+    s->locked_volume = volume;
     return ERROR_SUCCESS;
 }
-void wl_close(WL_SESSION *s) {
-    if (!s) return;
+DWORD wl_close(WL_SESSION *s) {
+    DWORD before = 0, after = 0;
+    if (!s) return ERROR_INVALID_PARAMETER;
+    SpdStorageUnitGetDispatcherError(s->unit, &before);
     SpdStorageUnitShutdown(s->unit);
     SpdStorageUnitWaitDispatcher(s->unit);
+    SpdStorageUnitGetDispatcherError(s->unit, &after);
     SpdStorageUnitDelete(s->unit);
     if (s->locked_volume) CloseHandle(s->locked_volume);
+    CloseHandle(s->publish_guard);
     SecureZeroMemory(s, sizeof *s);
     HeapFree(GetProcessHeap(), 0, s);
+    /* Explicit shutdown cancels the pending transport request with OPERATION_ABORTED. */
+    return before ? before : (after == ERROR_OPERATION_ABORTED ? ERROR_SUCCESS : after);
 }

@@ -21,7 +21,23 @@ where
 {
     match fs {
         Filesystem::Ext4 => ext4(&read(1024, 1024)?, length),
-        Filesystem::Btrfs => btrfs(&read(65536, 4096)?, length),
+        Filesystem::Btrfs => {
+            let primary = read(65536, 4096)?;
+            btrfs_at(&primary, length, 65536)?;
+            // WinBtrfs chooses the newest valid mirror. Inspect every mirror it can
+            // consume, and require one coherent commit before allowing a mount.
+            for offset in [0x4000000u64, 0x4000000000] {
+                if offset + 4096 > length {
+                    break;
+                }
+                let mirror = read(offset, 4096)?;
+                btrfs_at(&mirror, length, offset)?;
+                if primary[32..48] != mirror[32..48] || primary[56..] != mirror[56..] {
+                    return Err(Error::FsRecoveryRequired);
+                }
+            }
+            Ok(())
+        }
     }
 }
 /// E0 is a deliberately narrower allowlist than ext4's general forward-compatibility rules.
@@ -131,6 +147,9 @@ pub fn ext4(s: &[u8], length: u64) -> Result<()> {
 }
 /// Initial B0: CRC32c, 4 KiB sectors, single device, no outstanding log tree.
 pub fn btrfs(s: &[u8], length: u64) -> Result<()> {
+    btrfs_at(s, length, 65536)
+}
+fn btrfs_at(s: &[u8], length: u64, physical_offset: u64) -> Result<()> {
     if s.len() != 4096 {
         return Err(Error::FsInvalid);
     }
@@ -143,7 +162,7 @@ pub fn btrfs(s: &[u8], length: u64) -> Result<()> {
     if crc32c::crc32c(&s[32..]) != u32le(s, 0) || s[4..32].iter().any(|b| *b != 0) {
         return Err(Error::FsInvalid);
     }
-    if u64le(s, 0x30) != 65536
+    if u64le(s, 0x30) != physical_offset
         || u64le(s, 0x70) > length
         || u64le(s, 0x70) == 0
         || u64le(s, 0x78) > u64le(s, 0x70)

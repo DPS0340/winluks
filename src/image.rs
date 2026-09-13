@@ -1,4 +1,6 @@
 use crate::{Error, Result};
+#[cfg(test)]
+pub(crate) mod fault;
 use std::{
     fs::{File, OpenOptions},
     path::Path,
@@ -16,6 +18,8 @@ pub struct Image {
     file: File,
     len: u64,
     mode: AccessMode,
+    #[cfg(test)]
+    pub(crate) fault: fault::Injector,
 }
 impl Image {
     pub fn open(path: &Path) -> Result<Self> {
@@ -133,6 +137,8 @@ impl Image {
             file,
             len: meta.len(),
             mode,
+            #[cfg(test)]
+            fault: fault::Injector::default(),
         })
     }
     pub fn len(&self) -> u64 {
@@ -156,15 +162,9 @@ impl Image {
         }
         let mut done = 0;
         while done < buf.len() {
-            #[cfg(unix)]
-            let n = {
-                use std::os::unix::fs::FileExt;
-                self.file.write_at(&buf[done..], offset + done as u64)?
-            };
-            #[cfg(windows)]
-            let n = {
-                use std::os::windows::fs::FileExt;
-                self.file.seek_write(&buf[done..], offset + done as u64)?
+            let n = match self.write_once(offset + done as u64, &buf[done..]) {
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                result => result?,
             };
             if n == 0 {
                 return Err(Error::BackendIo);
@@ -178,6 +178,8 @@ impl Image {
             return Err(Error::BackendIo);
         }
         if self.mode == AccessMode::ReadWrite {
+            #[cfg(test)]
+            self.fault.before(fault::Operation::Sync, 0)?;
             self.file.sync_all()?;
         }
         Ok(())
@@ -191,16 +193,9 @@ impl Image {
         }
         let mut done = 0;
         while done < buf.len() {
-            #[cfg(unix)]
-            let n = {
-                use std::os::unix::fs::FileExt;
-                self.file.read_at(&mut buf[done..], offset + done as u64)?
-            };
-            #[cfg(windows)]
-            let n = {
-                use std::os::windows::fs::FileExt;
-                self.file
-                    .seek_read(&mut buf[done..], offset + done as u64)?
+            let n = match self.read_once(offset + done as u64, &mut buf[done..]) {
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                result => result?,
             };
             if n == 0 {
                 return Err(Error::BackendIo);
@@ -208,5 +203,36 @@ impl Image {
             done += n;
         }
         Ok(())
+    }
+    fn write_once(&self, offset: u64, buf: &[u8]) -> std::io::Result<usize> {
+        #[cfg(test)]
+        let buf = &buf[..self.fault.before(fault::Operation::Write, buf.len())?];
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::FileExt;
+            self.file.write_at(buf, offset)
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::FileExt;
+            self.file.seek_write(buf, offset)
+        }
+    }
+    fn read_once(&self, offset: u64, buf: &mut [u8]) -> std::io::Result<usize> {
+        #[cfg(test)]
+        let buf = {
+            let n = self.fault.before(fault::Operation::Read, buf.len())?;
+            &mut buf[..n]
+        };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::FileExt;
+            self.file.read_at(buf, offset)
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::FileExt;
+            self.file.seek_read(buf, offset)
+        }
     }
 }

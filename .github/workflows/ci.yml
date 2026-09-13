@@ -36,8 +36,9 @@ jobs:
             Invoke-WebRequest "https://raw.githubusercontent.com/winfsp/winspd/55c53bc454afbbba38bd1692f52beb77ed59142f/inc/winspd/$name" -OutFile "$sdk/inc/winspd/$name"
           }
           "WINSPD_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "$sdk/extracted" | Out-File -FilePath $env:GITHUB_PATH -Append
-      - run: cargo test --locked --release --features vendored-openssl
+          Copy-Item "$sdk/extracted/winspd_x64.dll" "$sdk/lib/winspd-x64.dll"
+          "$sdk/lib" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - run: cargo test --locked --release --features winspd,vendored-openssl
       - run: cargo build --locked --release --features winspd,vendored-openssl
       - name: Build isolated G0 spike and oracle harness
         shell: pwsh

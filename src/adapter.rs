@@ -33,8 +33,8 @@ impl BlockAdapter {
     pub fn faulted(&self) -> bool {
         self.volume.faulted()
     }
-    #[cfg(all(windows, feature = "winspd"))]
-    fn mark_faulted(&self) {
+    #[cfg(any(test, all(windows, feature = "winspd")))]
+    pub(crate) fn mark_faulted(&self) {
         self.volume.mark_faulted();
     }
     pub fn read(&self, lba: u64, count: u32) -> Result<Zeroizing<Vec<u8>>> {
@@ -87,6 +87,14 @@ impl BlockAdapter {
             self.flushes.fetch_add(1, Ordering::Relaxed);
             self.volume.flush()
         }
+    }
+    #[cfg(any(test, all(windows, feature = "winspd")))]
+    pub(crate) fn shutdown(&self, drain: impl FnOnce() -> u32) -> bool {
+        let sync_failed = self.flush(0, 0).is_err();
+        self.stop();
+        let transport_error = drain(); // Callback context remains alive until this returns.
+        // A callback or dispatcher can fail during drain, after the final flush.
+        sync_failed || transport_error != 0 || self.faulted()
     }
     pub fn stop(&self) {
         self.stopping.store(true, Ordering::Release);
