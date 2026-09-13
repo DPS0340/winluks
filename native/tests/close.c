@@ -144,7 +144,7 @@ static BOOL WINAPI mock_DeviceIoControl(HANDLE volume, DWORD code, LPVOID in, DW
         CHECK(in_size == sizeof *query && query->PropertyId == StorageDeviceProperty);
         CHECK(query->QueryType == PropertyStandardQuery && out_size >= size);
         memset(out, 0, size);
-        d->Size = size; d->Version = sizeof *d; d->SerialNumberOffset = sizeof *d;
+        d->Size = size; d->Version = (DWORD)sizeof *d; d->SerialNumberOffset = (DWORD)sizeof *d;
         memcpy((BYTE *)out + sizeof *d, serial_name, sizeof serial_name);
         if (!state.descriptor_matches) ((BYTE *)out)[sizeof *d] = '0';
         *returned = size;

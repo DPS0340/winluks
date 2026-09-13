@@ -121,3 +121,60 @@ sudo python3 scripts/linux/verify-block-writes.py \
 Keep the output hierarchy aligned with the canonical manifests (for example,
 `rw-core/matrix/FIXTURE/writes.json` corresponds to `matrix/FIXTURE/manifest.json`).
 The Linux verifier uses original Linux plaintext and read-only dm-crypt mappings as its oracle.
+
+## v0.3.1 failure and power-cut reproduction
+
+The [versioned report](../../docs/POWERLOSS-v0.3.1.md) records the exact scope, failed
+application-flush durability and preliminary harness failures. The matrix uses fresh,
+file-backed Windows overlays; no physical host shutdown is performed.
+
+Prepare the private layout expected by `run-powercut.py`:
+
+- `LAB/windows-powercut-base/{windows.qcow2,windows-vars.fd,tpm/}`: a **powered-off** RW-ready
+  Windows guest with the matching tested EXE/DLL under `C:\winluks-lab\bin`, the unchanged
+  Btrfs fixture at `C:\winluks-lab\powercut\volume.img`, and existing lab scripts under
+  `C:\winluks-lab\scripts`. Do not put `raw-before.bin` or `raw-go` in the base.
+- `LAB/fixtures/btrfs-pbkdf2-512-sha256/`: the canonical manifest, image, plaintext and
+  synthetic password file. Place the same fixture at `/home/lab/fixtures/...` in Linux.
+- `LAB/vm/{lab_ed25519,known_hosts,linux-qmp.sock}`: generated lab SSH identity and the
+  running Linux guest QMP socket. Linux SSH forwards to 22280, Windows to 22281; the
+  Windows runner uses the loopback VNC port 5918.
+- Linux needs `ntfs-3g`, `dislocker`, cryptsetup and btrfs-progs; it must have a free
+  `pcie-root-port,id=cut-port,chassis=1,slot=5` for the read-only crash disk hotplug.
+  Use noninteractive sudo only in this disposable guest. A Python environment on the
+  host needs `pexpect`, plus QEMU/KVM and the configured swtpm binary.
+
+The runner currently uses `/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd` and
+`LAB/swtpm/bin/swtpm`; adapt these local runtime paths for another host. Each trial ID
+must be new. Preserve every backing file without booting/modifying it while overlays exist.
+
+```sh
+python scripts/vm/run-powercut.py --lab PRIVATE_LAB --repo REPO \
+  --trial power-flushed-01 --case power-flushed
+```
+
+Run two fresh IDs for each of `power-idle`, `power-flushed`, `power-stream`, `power-close`,
+`process-idle`, `process-flushed`, `process-stream`, `normal-close`, `disk-full`, `raw-block`.
+The runner copies the current workload and Linux verifier scripts, records password-free
+console/events/actual exit status, verifies the trial PID and sends QEMU SIGKILL. It then
+attaches the unbooted OS disk read-only to Linux, extracts the local LUKS file read-only,
+and invokes `verify-powercut.py`. Keep the raw logs and images private; publish only
+sanitized fixture observations, hashes and test summaries.
+
+For raw trials, the Windows script holds the exact target volume locked/dismounted. The
+host receives and authenticates all prewrite plaintext before creating the go marker;
+then three exact unbuffered/write-through writes and flushes are observed before the cut.
+The Linux verifier receives that baseline separately and compares the complete plaintext.
+A missing/mismatched baseline or incomplete event sequence fails verification.
+
+Normal-close requires four nonempty expected records, actual exit 0 and `clean=true`.
+The pinned driver's disk-full case requires confirmed ENOSPC and an explicit unclean,
+forced-RO close result. For abrupt file-level cases, `required_checks_passed` in the
+low-level Linux JSON describes structural/canonical checks; inspect the nonempty
+`records` list separately. It must **not** be reported as passing file-flush durability.
+A stream/close-request trigger does not establish a cut within a specific backend write.
+
+If a verifier fails, preserve its trial and logs; do not reboot Windows or repair the
+crash image to obtain a passing result. Check for a remaining read-only QMP attachment
+before the next trial and detach that exact `cut-device`/`cut-image`. Stop only task-created
+QEMU/swtpm instances when the campaign ends. Retain incomplete attempts with their reasons.
