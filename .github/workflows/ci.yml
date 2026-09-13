@@ -47,6 +47,13 @@ jobs:
           if ($LASTEXITCODE) { throw 'G0 build failed' }
           cargo build --locked --release --examples --features vendored-openssl
           if ($LASTEXITCODE) { throw 'oracle build failed' }
+      - name: Test native close and publication boundaries
+        shell: pwsh
+        run: |
+          cl /nologo /W4 /I "$env:WINSPD_SDK/inc" native/tests/close.c /Fe:native-close-test.exe /link advapi32.lib ole32.lib
+          if ($LASTEXITCODE) { throw 'Native test build failed' }
+          ./native-close-test.exe
+          if ($LASTEXITCODE) { throw 'Native close tests failed' }
       - name: Package test build
         shell: pwsh
         run: |
