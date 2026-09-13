@@ -84,7 +84,8 @@ def main():
         tarpath=a.output/f'winluks-{a.version}-source-with-dependencies.tar.gz'
         with tarfile.open(tarpath,'w:gz') as tar:tar.add(source,arcname=source.name,filter=normalize)
         (windows/'SHA256.txt').write_text(''.join(f'{sha(f)}  {f.relative_to(windows).as_posix()}\n' for f in sorted(windows.rglob('*')) if f.is_file()))
-        with zipfile.ZipFile(winzip,'w',zipfile.ZIP_DEFLATED) as z:
+        # Published crates can carry Unix-epoch file times; ZIP starts at 1980.
+        with zipfile.ZipFile(winzip,'w',zipfile.ZIP_DEFLATED,strict_timestamps=False) as z:
             for f in sorted(windows.rglob('*')):
                 if f.is_file():z.write(f,f.relative_to(stage).as_posix())
     files=[winzip,tarpath]
